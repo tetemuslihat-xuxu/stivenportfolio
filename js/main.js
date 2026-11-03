@@ -83,6 +83,7 @@
     return (p.socials || []).map(function (s) { return '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.name) + ' ↗</a>'; }).join('');
   }
   document.getElementById('socials').innerHTML = socialsHTML();
+  document.getElementById('footSocials').innerHTML = socialsHTML();
   function siteShareButtons() {
     var url = encodeURIComponent(window.location.href);
     var text = encodeURIComponent('MY NAME IS STIVEN — Portfolio (video, desain & web app)');
@@ -95,7 +96,6 @@
       '<button class="s-btn" data-copy="' + esc(window.location.href) + '" title="Salin link">⧉</button>';
   }
   document.getElementById('siteShare').innerHTML = siteShareButtons();
-  document.getElementById('footSocials').innerHTML = socialsHTML();
 
   // marquee
   var items = ['Video', 'Web App', 'Graphic Design', 'Motion', 'Branding', 'Logo', 'Banner', 'Poster', 'Social Content', 'Landscape 16:9', 'Portrait 9:16'];
@@ -103,6 +103,35 @@
   document.getElementById('marqueeTrack').innerHTML = seq + seq;
 
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  /* ---------------- share helpers (TOP LEVEL of main) ---------------- */
+  function shareURL(w) { return window.location.origin + '/share/' + w.id + '.html'; }
+  function shareWork(id) {
+    var w = works.find(function (x) { return x.id === id; });
+    if (!w) return;
+    var url = shareURL(w);
+    if (navigator.share) { navigator.share({ title: w.title, text: w.title + ' — STIVEN Portfolio', url: url }).catch(function () {}); }
+    else if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(url).then(function () { showToast('🔗 Link share karya tersalin ✓'); }, function () { window.prompt('Salin link share:', url); }); }
+    else { window.prompt('Salin link share:', url); }
+  }
+  function shareButtonsHTML(w) {
+    var url = encodeURIComponent(shareURL(w));
+    var text = encodeURIComponent(w.title + ' — STIVEN Portfolio');
+    return '<div class="share-row"><span>Bagikan:</span>' +
+      '<a class="s-btn" title="WhatsApp" target="_blank" rel="noopener" href="https://wa.me/?text=' + text + '%20' + url + '">WA</a>' +
+      '<a class="s-btn" title="Telegram" target="_blank" rel="noopener" href="https://t.me/share/url?url=' + url + '&text=' + text + '">TG</a>' +
+      '<a class="s-btn" title="X / Twitter" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=' + text + '&url=' + url + '">𝕏</a>' +
+      '<a class="s-btn" title="Facebook" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=' + url + '">f</a>' +
+      '<a class="s-btn" title="LinkedIn" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=' + url + '">in</a>' +
+      '<button class="s-btn" data-copy="' + esc(shareURL(w)) + '" title="Salin link">⧉</button></div>';
+  }
+  // copy-link delegate (works for footer + lightbox + work page buttons)
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.s-btn[data-copy]');
+    if (!b) return;
+    var u = b.getAttribute('data-copy');
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(u).then(function () { showToast('🔗 Link tersalin ✓'); }); }
+  });
 
   /* ---------------- render works ---------------- */
   var grid = document.getElementById('worksGrid');
@@ -160,34 +189,7 @@
     if (!btn) return;
     filter = btn.getAttribute('data-filter');
     document.querySelectorAll('#filters button').forEach(function (b) { b.classList.toggle('active', b === btn); });
-    function shareURL(w) { return window.location.origin + '/share/' + w.id + '.html'; }
-  function shareWork(id) {
-    var w = works.find(function (x) { return x.id === id; });
-    if (!w) return;
-    var url = shareURL(w);
-    if (navigator.share) { navigator.share({ title: w.title, text: w.title + ' — STIVEN Portfolio', url: url }).catch(function () {}); }
-    else if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(url).then(function () { showToast('🔗 Link share karya tersalin ✓'); }, function () { window.prompt('Salin link share:', url); }); }
-    else { window.prompt('Salin link share:', url); }
-  }
-  function shareButtonsHTML(w) {
-    var url = encodeURIComponent(shareURL(w));
-    var text = encodeURIComponent(w.title + ' — STIVEN Portfolio');
-    return '<div class="share-row"><span>Bagikan:</span>' +
-      '<a class="s-btn" title="WhatsApp" target="_blank" rel="noopener" href="https://wa.me/?text=' + text + '%20' + url + '">WA</a>' +
-      '<a class="s-btn" title="Telegram" target="_blank" rel="noopener" href="https://t.me/share/url?url=' + url + '&text=' + text + '">TG</a>' +
-      '<a class="s-btn" title="X / Twitter" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=' + text + '&url=' + url + '">𝕏</a>' +
-      '<a class="s-btn" title="Facebook" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=' + url + '">f</a>' +
-      '<a class="s-btn" title="LinkedIn" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=' + url + '">in</a>' +
-      '<button class="s-btn" data-copy="' + esc(shareURL(w)) + '" title="Salin link">⧉</button></div>';
-  }
-  document.addEventListener('click', function (e) {
-    var b = e.target.closest('.s-btn[data-copy]');
-    if (!b) return;
-    var u = b.getAttribute('data-copy');
-    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(u).then(function () { showToast('🔗 Link tersalin ✓'); }); }
-  });
-
-  renderWorks();
+    renderWorks();
   });
 
   /* ---------------- lightbox ---------------- */
