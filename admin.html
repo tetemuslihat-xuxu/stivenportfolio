@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — STIVEN Portfolio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314100b'/%3E%3Ctext x='32' y='45' font-family='Georgia' font-style='italic' font-size='38' fill='%23e8930c' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="admin-body">
+
+  <div class="grain"></div>
+
+  <!-- ============ LOGIN ============ -->
+  <div class="login-wrap" id="loginView">
+    <form class="login-card" id="loginForm">
+      <h1>STIVEN <em>admin</em></h1>
+      <p class="hint">Masuk untuk mengelola konten website — profil &amp; karya.</p>
+      <div class="field" style="margin-bottom:18px">
+        <label for="pw">Password</label>
+        <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password" required />
+      </div>
+      <p id="loginError" style="color:#b3261e;font-size:0.85rem;margin-bottom:14px;display:none">Password salah.</p>
+      <button type="submit" class="btn" style="width:100%">Masuk →</button>
+      <p style="margin-top:18px;text-align:center"><a href="index.html" style="font-size:0.8rem;letter-spacing:0.14em;text-transform:uppercase;text-decoration:none;color:var(--ink-2)">← Kembali ke website</a></p>
+    </form>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="dashView" style="display:none">
+    <div class="admin-top">
+      <div class="brand">STIVEN <span>· Admin Panel</span></div>
+      <div class="admin-actions">
+        <a class="btn ghost small" href="index.html" target="_blank">Lihat website ↗</a>
+        <button class="btn ghost small danger" id="btnReset">Reset data</button>
+        <button class="btn small" id="btnLogout">Logout</button>
+      </div>
+    </div>
+
+    <div class="admin-main">
+      <div class="admin-tabs">
+        <button class="active" data-tab="profile">Profil / About</button>
+        <button data-tab="works">Karya (Video & Desain) <span id="worksCount" style="opacity:.6"></span></button>
+        <button data-tab="settings">Settings</button>
+      </div>
+
+      <!-- ===== PROFILE ===== -->
+      <div class="panel active" id="tab-profile">
+        <form id="profileForm">
+          <div class="card-box">
+            <h2>Profil &amp; Hero</h2>
+            <p class="sub">Teks yang tampil di halaman utama. Gunakan <code>{{kata}}</code> untuk gaya italic serif (contoh: <code>{{static.}}</code>).</p>
+            <div class="form-grid">
+              <div class="field"><label>Nama / Logo</label><input id="fName" required /></div>
+              <div class="field"><label>Role / Judul profesi</label><input id="fRole" /></div>
+              <div class="field"><label>Headline baris 1 (grotesk)</label><input id="fHeadA" /></div>
+              <div class="field"><label>Headline baris 2 (pakai {{...}} untuk italic)</label><input id="fHeadB" /></div>
+              <div class="field full"><label>Tagline hero</label><input id="fTagline" /></div>
+              <div class="field"><label>Judul section About</label><input id="fAboutTitle" /></div>
+              <div class="field"><label>Judul section Works</label><input id="fWorksTitle" /></div>
+              <div class="field"><label>Judul footer CTA</label><input id="fCtaTitle" /></div>
+              <div class="field"><label>Status ketersediaan</label><input id="fAvail" /></div>
+              <div class="field"><label>Caption di bawah foto profil</label><input id="fPortraitCap" placeholder="A. STIVEN R." /></div>
+              <div class="field full"><label>Bio (tiap paragraf dipisah baris kosong)</label><textarea id="fBio"></textarea></div>
+              <div class="field"><label>Lokasi</label><input id="fLocation" /></div>
+              <div class="field"><label>Email</label><input id="fEmail" type="email" /></div>
+              <div class="field"><label>Phone / WA</label><input id="fPhone" /></div>
+              <div class="field"><label>Layanan (pisah dengan koma)</label><input id="fServices" /></div>
+              <div class="field full"><label>Media sosial (format: Nama=URL, pisah dengan koma)</label><input id="fSocials" placeholder="Instagram=https://..., YouTube=https://..." /></div>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <h2>Gambar</h2>
+            <p class="sub">Upload gambar hero (cahaya amber, landscape) &amp; foto profil (portrait). File disimpan sebagai data di browser (sebaiknya &lt; 1 MB).</p>
+            <div class="form-grid">
+              <div class="field full">
+                <label>Gambar hero (landscape)</label>
+                <input type="file" id="fHeroImg" accept="image/*" />
+                <div class="img-preview"><img id="prevHero" src="" alt="hero preview" /><span class="cur" id="curHero"></span></div>
+              </div>
+              <div class="field full">
+                <label>Foto profil / about (portrait)</label>
+                <input type="file" id="fPortrait" accept="image/*" />
+                <div class="img-preview portrait"><img id="prevPortrait" src="" alt="portrait preview" /><span class="cur" id="curPortrait"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-box">
+            <h2>Statistik hero (proof)</h2>
+            <p class="sub">4 angka yang tampil di bawah headline.</p>
+            <div id="statsEditor"></div>
+          </div>
+
+          <button type="submit" class="btn">Simpan profil ✓</button>
+        </form>
+      </div>
+
+      <!-- ===== WORKS ===== -->
+      <div class="panel" id="tab-works">
+        <div class="card-box">
+          <h2 id="workFormTitle">Tambah karya baru</h2>
+          <p class="sub">Video: <b>landscape 16:9</b> / <b>portrait 9:16</b>. Desain grafis: banner, logo, poster, dst. <b>Web App:</b> upload <b>1 file <code>.html</code> mandiri</b> (CSS/JS di-inline) atau pakai <b>URL demo live</b> — pengunjung bisa langsung mencoba demo-nya di dalam website (iframe).</p>
+          <form id="workForm">
+            <input type="hidden" id="wId" />
+            <div class="form-grid">
+              <div class="field"><label>Judul karya</label><input id="wTitle" required placeholder="mis. Brand Film Kopi Lokal" /></div>
+              <div class="field"><label>Jenis</label>
+                <select id="wType">
+                  <option value="video">🎬 Video</option>
+                  <option value="design">🎨 Desain Grafis</option>
+                  <option value="webapp">💻 Web App (demo interaktif)</option>
+                </select>
+              </div>
+              <div class="field"><label>Aspek rasio</label><select id="wRatio"></select></div>
+              <div class="field"><label>Kategori</label><select id="wCategory"></select></div>
+              <div class="field full"><label>Deskripsi singkat</label><textarea id="wDesc" style="min-height:70px"></textarea></div>
+              <div class="field full">
+                <label>Sumber file</label>
+                <div class="src-toggle">
+                  <label><input type="radio" name="srcMode" value="file" checked /> Upload file</label>
+                  <label><input type="radio" name="srcMode" value="url" /> Pakai URL</label>
+                </div>
+                <input type="file" id="wFile" style="margin-bottom:10px" />
+                <input type="text" id="wUrl" placeholder="https://... (link file langsung)" style="width:100%;font-family:inherit;font-size:.95rem;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink)" />
+                <p class="note" id="fileNote">Video: mp4/webm · Desain: jpg/png/webp · Web App: satu file .html mandiri (sebaiknya &lt;1 MB) atau URL demo. File besar (&gt;3 MB) sebaiknya pakai URL agar data bisa tersimpan.</p>
+              </div>
+              <div class="field full" id="posterField">
+                <label>Thumbnail / poster (opsional — untuk video &amp; web app)</label>
+                <input type="file" id="wPoster" accept="image/*" />
+              </div>
+              <div class="field full preview-thumb" id="wPreviewWrap" style="display:none">
+                <label>Preview</label>
+                <div id="wPreview"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+              <button type="submit" class="btn" id="wSubmit">Tambah karya ✓</button>
+              <button type="button" class="btn ghost" id="wCancel" style="display:none">Batal edit</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card-box">
+          <h2>Daftar karya</h2>
+          <p class="sub">Klik karya di website untuk melihat full (video diputar di lightbox).</p>
+          <div class="works-list" id="worksList"></div>
+        </div>
+      </div>
+
+      <!-- ===== SETTINGS ===== -->
+      <div class="panel" id="tab-settings">
+        <div class="card-box">
+          <h2>Ganti password admin</h2>
+          <p class="sub">Masukkan password lama, lalu password baru (min. 4 karakter).</p>
+          <form id="pwForm">
+            <div class="form-grid">
+              <div class="field"><label>Password lama</label><input type="password" id="pwOld" required /></div>
+              <div class="field"></div>
+              <div class="field"><label>Password baru</label><input type="password" id="pwNew" required minlength="4" /></div>
+              <div class="field"><label>Ulangi password baru</label><input type="password" id="pwNew2" required /></div>
+            </div>
+            <button type="submit" class="btn" style="margin-top:18px">Simpan password ✓</button>
+          </form>
+        </div>
+        <div class="card-box">
+          <h2>Data website</h2>
+          <p class="sub">Konten disimpan di <code>localStorage</code> browser ini. Kalau <code>js/supabase-config.js</code> sudah diisi (lihat panduan deploy), data otomatis ikut tersimpan ke database <b>Supabase</b> sehingga bisa diakses dari perangkat mana pun. Reset akan mengembalikan ke konten contoh.</p>
+          <button class="btn danger" id="btnReset2">🗑 Reset semua data ke default</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
