@@ -336,6 +336,42 @@
     renderWorksList();
   });
 
+  var SHARE_BASE = 'https://stivenportfolio.vercel.app'; // GANTI dengan domain Vercel setelah deploy
+  function shareURLFor(w) { return window.location.origin + '/share/' + w.id + '.html'; }
+  function makeSharePage(w) {
+    var ogType = w.type === 'video' ? 'video.other' : 'website';
+    var vtags = '';
+    if (w.type === 'video') {
+      var dims = { '16/9': [1280, 720], '9/16': [720, 1280], '1/1': [1080, 1080] }[w.ratio] || [1280, 720];
+      vtags = '\n  <meta property="og:video" content="' + SHARE_BASE + '/' + esc(w.src) + '" />' +
+        '\n  <meta property="og:video:secure_url" content="' + SHARE_BASE + '/' + esc(w.src) + '" />' +
+        '\n  <meta property="og:video:type" content="video/mp4" />' +
+        '\n  <meta property="og:video:width" content="' + dims[0] + '" />' +
+        '\n  <meta property="og:video:height" content="' + dims[1] + '" />';
+    }
+    return '<!DOCTYPE html>\n<html lang="id">\n<head>\n<meta charset="UTF-8" />\n' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1" />\n' +
+      '<title>' + esc(w.title) + ' — STIVEN Portfolio</title>\n' +
+      '<meta name="description" content="' + esc(w.desc || w.title) + '" />\n' +
+      '<!-- GANTI ' + SHARE_BASE + ' dengan domain Vercel kamu setelah deploy (wajib agar thumbnail WhatsApp muncul) -->\n' +
+      '<meta property="og:type" content="' + ogType + '" />\n' +
+      '<meta property="og:site_name" content="STIVEN — Portfolio" />\n' +
+      '<meta property="og:title" content="' + esc(w.title) + ' — STIVEN Portfolio" />\n' +
+      '<meta property="og:description" content="' + esc((w.desc || '') + ' [' + (w.category || w.type) + ' · ' + (w.ratio || '') + ']') + '" />\n' +
+      '<meta property="og:url" content="' + SHARE_BASE + '/share/' + esc(w.id) + '.html" />\n' +
+      '<meta property="og:image" content="' + SHARE_BASE + '/assets/og/' + esc(w.id) + '.jpg" />\n' +
+      '<meta property="og:image:width" content="1200" />\n<meta property="og:image:height" content="630" />' + vtags + '\n' +
+      '<meta name="twitter:card" content="summary_large_image" />\n' +
+      '<meta name="twitter:title" content="' + esc(w.title) + ' — STIVEN Portfolio" />\n' +
+      '<meta name="twitter:description" content="' + esc(w.desc || '') + '" />\n' +
+      '<meta name="twitter:image" content="' + SHARE_BASE + '/assets/og/' + esc(w.id) + '.jpg" />\n' +
+      '<meta name="theme-color" content="#16110c" />\n' +
+      '<meta http-equiv="refresh" content="0; url=../work.html?id=' + esc(w.id) + '" />\n' +
+      '<script>(function(){var o=location.origin,p="' + SHARE_BASE + '";document.querySelectorAll("meta").forEach(function(m){var c=m.getAttribute("content");if(c&&c.indexOf(p)===0){m.setAttribute("content",c.split(p).join(o));}});})();</' + 'script>\n' +
+      '</head>\n<body style="background:#16110c;color:#efe7d8;font-family:sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center">\n' +
+      '<p>Membuka karya: <a style="color:#f5b04d" href="../work.html?id=' + esc(w.id) + '">' + esc(w.title) + ' →</a></p>\n</body>\n</html>';
+  }
+
   function findWork(id) {
     return SiteData.get().works.find(function (w) { return w.id === id; });
   }
@@ -366,6 +402,8 @@
             '<span class="badge">' + esc(w.category || '') + '</span>' +
           '</div></div>' +
         '<div class="ops">' +
+          '<button class="btn ghost small act-share" title="Salin link share karya">🔗</button>' +
+          '<button class="btn ghost small act-dl" title="Unduh halaman share (OG) untuk karya ini">⬇</button>' +
           '<button class="btn ghost small act-edit">Edit</button>' +
           '<button class="btn danger small act-del">Hapus</button>' +
         '</div></div>';
@@ -373,6 +411,7 @@
 
     list.querySelectorAll('.work-row').forEach(function (row) {
       var id = row.getAttribute('data-id');
+      var wRow = findWork(id);
       row.querySelector('.act-del').addEventListener('click', function () {
         var w = findWork(id);
         if (!w) return;
@@ -383,6 +422,21 @@
         if (editingId === id) resetWorkForm();
         renderWorksList();
         toast('Karya dihapus ✓');
+      });
+      row.querySelector('.act-share').addEventListener('click', function () {
+        if (!wRow) return;
+        var u = shareURLFor(wRow);
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(function () { toast('🔗 Link share tersalin: ' + u); });
+        else window.prompt('Salin link share:', u);
+      });
+      row.querySelector('.act-dl').addEventListener('click', function () {
+        if (!wRow) return;
+        var blob = new Blob([makeSharePage(wRow)], { type: 'text/html' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'share-' + wRow.id + '.html';
+        document.body.appendChild(a); a.click(); a.remove();
+        toast('⬇ Halaman share diunduh — upload ke folder share/ di repo, lalu ganti domain di dalamnya setelah deploy');
       });
       row.querySelector('.act-edit').addEventListener('click', function () {
         var w = findWork(id);

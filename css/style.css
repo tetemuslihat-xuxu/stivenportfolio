@@ -422,3 +422,26 @@ input[type="file"] { font-size: 0.82rem; color: var(--ink-2); }
 .lb-frame { width: min(94vw, 1150px); height: 74vh; border: 0; border-radius: 10px; background: #fff; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6); }
 .lb-open { display: inline-block; margin-top: 14px; font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber-soft); text-decoration: none; border: 1px solid rgba(245, 176, 77, 0.5); padding: 9px 20px; border-radius: 999px; transition: 0.25s; }
 .lb-open:hover { background: var(--amber); border-color: var(--amber); color: var(--dark); }
+
+/* ---------- share buttons & halaman detail karya ---------- */
+.share-btn { margin-left: 12px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--ink-2); cursor: pointer; font-size: .9rem; transition: .25s; flex-shrink: 0; align-self: center; }
+.share-btn:hover { background: var(--amber); border-color: var(--amber); color: var(--dark); }
+.share-row { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.share-row.left { justify-content: flex-start; }
+.share-row > span { color: var(--ink-2); font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; }
+.lb-caption .share-row > span { color: rgba(247,241,230,.6); }
+.s-btn { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; font-size: .7rem; font-weight: 700; border: 1px solid rgba(247,241,230,.3); color: #f7f1e6; background: transparent; cursor: pointer; font-family: inherit; transition: .25s; }
+.s-btn:hover { background: var(--amber); border-color: var(--amber); color: var(--dark); }
+.work-page { background: #16110c; color: var(--ink); min-height: 100vh; }
+.work-hero { min-height: 100vh; display: flex; flex-direction: column; padding-top: 84px; }
+.work-media { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px 5vw; }
+.work-media video, .work-media img { max-width: min(94vw, 1150px); max-height: 66vh; border-radius: 12px; box-shadow: 0 30px 90px rgba(0,0,0,.6); }
+.work-media video.portrait { height: 66vh; width: auto; max-width: 94vw; }
+.work-info { text-align: center; padding: 26px 5vw 70px; }
+.work-info h1 { font-size: clamp(1.8rem, 4.5vw, 3.2rem); font-weight: 600; letter-spacing: -.03em; }
+.work-info .sec-label { justify-content: center; }
+.badges.center { display: flex; gap: 8px; justify-content: center; margin: 14px 0 6px; flex-wrap: wrap; }
+.badges .badge { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; padding: 5px 13px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); }
+.badges .badge.video { border-color: var(--amber-deep); color: var(--amber-deep); }
+.badges .badge.webapp { border-color: #2dd4bf; color: #2dd4bf; }
+.w-desc { color: var(--ink-2); max-width: 620px; margin: 10px auto 0; }
