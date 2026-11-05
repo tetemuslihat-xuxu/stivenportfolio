@@ -78,7 +78,7 @@ window.SiteData = (function () {
 
   // dipanggil saat halaman dibuka: kalau Supabase terkonfigurasi,
   // data diambil dari cloud lalu disalin ke cache lokal
-  function init() {
+  function doInit() {
     var c = supaClient();
     if (!c) return Promise.resolve(false);
     return c.from('site_data').select('data').eq('id', 1).maybeSingle().then(function (res) {
@@ -103,7 +103,18 @@ window.SiteData = (function () {
     }).catch(function () { return false; });
   }
 
-  function isCloud() { return !!supaClient(); }
+  // tunggu library supabase (lokal/CDN) siap, maks 3 detik, baru inisialisasi cloud
+  function init() {
+    var tries = 0;
+    return new Promise(function (resolve) {
+      (function wait() {
+        if (supaClient() || !isCloud() || tries++ > 30) resolve(doInit());
+        else setTimeout(wait, 100);
+      })();
+    });
+  }
+
+  function isCloud() { return !!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY); }
 
   function load() {
     try {
