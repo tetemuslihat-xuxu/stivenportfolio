@@ -31,6 +31,25 @@
     try { return decodeURIComponent(m[2]); } catch (e) { return m[2]; }
   }
 
+  function normURL(u) {
+    u = String(u == null ? '' : u).trim();
+    if (!u || u === '#') return u || '#';
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^(www\.)?[\w-]+(\.[\w-]+)+(\/|$)/.test(u)) return 'https://' + u;
+    return u;
+  }
+  function isExtSrc(s) { return /^https?:\/\//i.test(String(s || '')); }
+  function embedURL(u) {
+    var m;
+    if ((m = String(u).match(/(?:youtube\.com\/(?:watch\?[^#]*v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/i))) return 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&rel=0';
+    if ((m = String(u).match(/vimeo\.com\/(?:video\/)?(\d+)/i))) return 'https://player.vimeo.com/video/' + m[1] + '?autoplay=1';
+    if ((m = String(u).match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/i))) return 'https://www.tiktok.com/embed/v2/' + m[1];
+    if ((m = String(u).match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/i))) return 'https://www.instagram.com/' + m[1] + '/' + m[2] + '/embed';
+    if ((m = String(u).match(/(?:x\.com|twitter\.com)\/[\w-]+\/status\/(\d+)/i))) return 'https://platform.twitter.com/embed/Tweet.html?id=' + m[1];
+    if (/facebook\.com\/.*\/videos\/\d+/i.test(String(u))) return 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(u) + '&show_text=false';
+    return null;
+  }
+
   function main() {
   var data = SiteData.get();
   var p = data.profile;
@@ -80,7 +99,7 @@
 
   // socials
   function socialsHTML() {
-    return (p.socials || []).map(function (s) { return '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.name) + ' ↗</a>'; }).join('');
+    return (p.socials || []).map(function (s) { return '<a href="' + esc(normURL(s.url)) + '" target="_blank" rel="noopener">' + esc(s.name) + ' ↗</a>'; }).join('');
   }
   document.getElementById('socials').innerHTML = socialsHTML();
   document.getElementById('footSocials').innerHTML = socialsHTML();
@@ -149,6 +168,10 @@
       return '<div class="browser-mock"><div class="chrome"><i></i><i></i><i></i></div><div class="bm-body">&lt;/&gt;</div></div>';
     }
     if (w.type === 'video') {
+      if (isExtSrc(w.src)) {
+        if (w.poster) return '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" loading="lazy" />';
+        return '<div class="browser-mock"><div class="chrome"><i></i><i></i><i></i></div><div class="bm-body">▶</div></div>';
+      }
       var posterAttr = w.poster ? ' poster="' + esc(w.poster) + '"' : '';
       return '<video src="' + esc(w.src) + '"' + posterAttr + ' muted preload="metadata" playsinline></video>';
     }
@@ -207,12 +230,18 @@
       var fr = document.createElement('iframe');
       fr.className = 'lb-frame';
       fr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals');
-      if (/^data:/.test(w.src)) { fr.srcdoc = decodeDataURL(w.src); } else { fr.src = w.src; }
+      if (/^data:/.test(w.src)) { fr.srcdoc = decodeDataURL(w.src); } else { fr.src = normURL(w.src); }
       lbStage.innerHTML = '';
       lbStage.appendChild(fr);
     } else if (w.type === 'video') {
-      lbStage.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +
-        ' controls autoplay playsinline class="' + (w.ratio === '9/16' ? 'portrait' : '') + '"></video>';
+      if (isExtSrc(w.src)) {
+        var eu = embedURL(w.src) || normURL(w.src);
+        lbStage.innerHTML = '<iframe class="lb-frame" src="' + esc(eu) + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000"></iframe>';
+        lbCaption.insertAdjacentHTML('beforeend', '<div style="margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></div>');
+      } else {
+        lbStage.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +
+          ' controls autoplay playsinline class="' + (w.ratio === '9/16' ? 'portrait' : '') + '"></video>';
+      }
     } else {
       lbStage.innerHTML = '<img src="' + esc(w.src) + '" alt="' + esc(w.title) + '" />';
     }

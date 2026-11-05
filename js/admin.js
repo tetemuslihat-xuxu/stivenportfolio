@@ -17,6 +17,14 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  // pastikan URL selalu punya protokol — kalau user lupa nulis https://
+  function normURL(u) {
+    u = String(u == null ? '' : u).trim();
+    if (!u || u === '#') return u || '#';
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^(www\.)?[\w-]+(\.[\w-]+)+(\/|$)/.test(u)) return 'https://' + u;
+    return u;
+  }
   function toast(msg, warn) {
     var t = $('toast');
     t.textContent = msg;
@@ -65,6 +73,12 @@
   function showDash() {
     $('loginView').style.display = 'none';
     $('dashView').style.display = 'block';
+    if (SiteData.isCloud && !SiteData.isCloud() && !sessionStorage.getItem('cloudWarn')) {
+      sessionStorage.setItem('cloudWarn', '1');
+      setTimeout(function () {
+        toast('⚠️ Supabase belum dikonfigurasi — perubahan HANYA tersimpan di browser ini. Isi js/supabase-config.js lalu commit → semua perangkat/HP tersinkron otomatis.', true);
+      }, 600);
+    }
     SiteData.init().then(initDashboard).catch(initDashboard);
   }
 
@@ -157,7 +171,7 @@
     });
     var socials = $('fSocials').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean).map(function (s) {
       var i = s.indexOf('=');
-      if (i > 0) return { name: s.slice(0, i).trim(), url: s.slice(i + 1).trim() };
+      if (i > 0) return { name: s.slice(0, i).trim(), url: normURL(s.slice(i + 1).trim()) };
       return { name: s, url: '#' };
     });
     var res = SiteData.update({
@@ -311,7 +325,7 @@
     var title = $('wTitle').value.trim();
     if (!title) { toast('⚠ Judul wajib diisi', true); return; }
     var type = $('wType').value;
-    var src = srcMode() === 'url' ? $('wUrl').value.trim() : pendingFile;
+    var src = srcMode() === 'url' ? normURL($('wUrl').value.trim()) : pendingFile;
     if (!src) { toast('⚠ Pilih file atau isi URL', true); return; }
 
     var data = SiteData.get();
@@ -339,9 +353,9 @@
   var SHARE_BASE = 'https://stivenportfolio.vercel.app'; // GANTI dengan domain Vercel setelah deploy
   function shareURLFor(w) { return window.location.origin + '/share/' + w.id + '.html'; }
   function makeSharePage(w) {
-    var ogType = w.type === 'video' ? 'video.other' : 'website';
+    var ogType = (w.type === 'video' && !/^https?:/i.test(w.src || '')) ? 'video.other' : 'website';
     var vtags = '';
-    if (w.type === 'video') {
+    if (w.type === 'video' && !/^https?:/i.test(w.src || '')) {
       var dims = { '16/9': [1280, 720], '9/16': [720, 1280], '1/1': [1080, 1080] }[w.ratio] || [1280, 720];
       vtags = '\n  <meta property="og:video" content="' + SHARE_BASE + '/' + esc(w.src) + '" />' +
         '\n  <meta property="og:video:secure_url" content="' + SHARE_BASE + '/' + esc(w.src) + '" />' +
@@ -389,7 +403,8 @@
       if (w.type === 'webapp') {
         thumb = w.poster ? '<img src="' + esc(w.poster) + '" alt="" />' : '<div class="thumb-mock">&lt;/&gt;</div>';
       } else if (w.type === 'video') {
-        thumb = w.poster ? '<img src="' + esc(w.poster) + '" alt="" />' : '<video src="' + esc(w.src) + '" muted preload="metadata"></video>';
+        thumb = w.poster ? '<img src="' + esc(w.poster) + '" alt="" />'
+          : (/^https?:/i.test(w.src || '') ? '<div class="thumb-mock">▶</div>' : '<video src="' + esc(w.src) + '" muted preload="metadata"></video>');
       } else {
         thumb = '<img src="' + esc(w.src) + '" alt="" />';
       }

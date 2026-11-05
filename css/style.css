@@ -445,3 +445,7 @@ input[type="file"] { font-size: 0.82rem; color: var(--ink-2); }
 .badges .badge.video { border-color: var(--amber-deep); color: var(--amber-deep); }
 .badges .badge.webapp { border-color: #2dd4bf; color: #2dd4bf; }
 .w-desc { color: var(--ink-2); max-width: 620px; margin: 10px auto 0; }
+
+/* iframe embed (video sosmed / webapp link) di lightbox & halaman work */
+.work-media iframe.lb-frame { height: 66vh; background: #000; }
+.lb-stage iframe.lb-frame { background: #000; }

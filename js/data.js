@@ -87,9 +87,23 @@ window.SiteData = (function () {
         try { window.localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {}
         return true;
       }
+      // cloud masih kosong → kalau ada data lokal (dari sebelum Supabase aktif), migrasikan ke cloud
+      try {
+        var raw = window.localStorage.getItem(KEY);
+        if (raw) {
+          var local = JSON.parse(raw);
+          if (local && local.profile && local.works) {
+            mem = local;
+            cloudSave(local);
+            return true;
+          }
+        }
+      } catch (e) {}
       return false;
     }).catch(function () { return false; });
   }
+
+  function isCloud() { return !!supaClient(); }
 
   function load() {
     try {
@@ -131,6 +145,7 @@ window.SiteData = (function () {
   }
 
   return {
+    isCloud: isCloud,
     init: init,
     get: get,
     save: save,

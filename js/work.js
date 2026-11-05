@@ -22,6 +22,25 @@
     }
     try { return decodeURIComponent(m[2]); } catch (e) { return m[2]; }
   }
+
+  function normURL(u) {
+    u = String(u == null ? '' : u).trim();
+    if (!u || u === '#') return u || '#';
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^(www\.)?[\w-]+(\.[\w-]+)+(\/|$)/.test(u)) return 'https://' + u;
+    return u;
+  }
+  function isExtSrc(s) { return /^https?:\/\//i.test(String(s || '')); }
+  function embedURL(u) {
+    var m;
+    if ((m = String(u).match(/(?:youtube\.com\/(?:watch\?[^#]*v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/i))) return 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&rel=0';
+    if ((m = String(u).match(/vimeo\.com\/(?:video\/)?(\d+)/i))) return 'https://player.vimeo.com/video/' + m[1] + '?autoplay=1';
+    if ((m = String(u).match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/i))) return 'https://www.tiktok.com/embed/v2/' + m[1];
+    if ((m = String(u).match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/i))) return 'https://www.instagram.com/' + m[1] + '/' + m[2] + '/embed';
+    if ((m = String(u).match(/(?:x\.com|twitter\.com)\/[\w-]+\/status\/(\d+)/i))) return 'https://platform.twitter.com/embed/Tweet.html?id=' + m[1];
+    if (/facebook\.com\/.*\/videos\/\d+/i.test(String(u))) return 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(u) + '&show_text=false';
+    return null;
+  }
   function shareURL(w) { return window.location.origin + '/share/' + w.id + '.html'; }
 
   function setMeta(prop, content) {
@@ -52,13 +71,13 @@
     setMeta('og:title', w.title + ' — STIVEN Portfolio');
     setMeta('og:description', (w.desc || '') + ' [' + (w.category || w.type) + ' · ' + (w.ratio || '') + ']');
     setMeta('og:url', shareURL(w));
-    setMeta('og:type', w.type === 'video' ? 'video.other' : 'website');
+    setMeta('og:type', (w.type === 'video' && !isExtSrc(w.src)) ? 'video.other' : 'website');
     setMeta('og:image', ogImg);
     setMeta('twitter:card', 'summary_large_image');
     setMeta('twitter:title', w.title + ' — STIVEN Portfolio');
     setMeta('twitter:description', w.desc || '');
     setMeta('twitter:image', ogImg);
-    if (w.type === 'video') {
+    if (w.type === 'video' && !isExtSrc(w.src)) {
       setMeta('og:video', window.location.origin + '/' + w.src);
       setMeta('og:video:secure_url', window.location.origin + '/' + w.src);
       setMeta('og:video:type', 'video/mp4');
@@ -76,13 +95,19 @@
 
     var m = $('wMedia');
     if (w.type === 'video') {
-      m.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +
-        ' controls playsinline class="' + (w.ratio === '9/16' ? 'portrait' : '') + '"></video>';
+      if (isExtSrc(w.src)) {
+        var eu = embedURL(w.src) || normURL(w.src);
+        m.innerHTML = '<iframe class="lb-frame" src="' + esc(eu) + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" allow="autoplay; fullscreen; encrypted-media" allowfullscreen style="background:#000"></iframe>' +
+          '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
+      } else {
+        m.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +
+          ' controls playsinline class="' + (w.ratio === '9/16' ? 'portrait' : '') + '"></video>';
+      }
     } else if (w.type === 'webapp') {
       var fr = document.createElement('iframe');
       fr.className = 'lb-frame';
       fr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals');
-      if (/^data:/.test(w.src)) fr.srcdoc = decodeDataURL(w.src); else fr.src = w.src;
+      if (/^data:/.test(w.src)) fr.srcdoc = decodeDataURL(w.src); else fr.src = normURL(w.src);
       m.innerHTML = ''; m.appendChild(fr);
     } else {
       m.innerHTML = '<img src="' + esc(w.src) + '" alt="' + esc(w.title) + '" />';
