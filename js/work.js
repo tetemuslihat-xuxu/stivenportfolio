@@ -35,11 +35,18 @@
     var m;
     if ((m = String(u).match(/(?:youtube\.com\/(?:watch\?[^#]*v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/i))) return 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&rel=0';
     if ((m = String(u).match(/vimeo\.com\/(?:video\/)?(\d+)/i))) return 'https://player.vimeo.com/video/' + m[1] + '?autoplay=1';
-    if ((m = String(u).match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/i))) return 'https://www.tiktok.com/embed/v2/' + m[1];
+    if ((m = String(u).match(/(?:www\.|m\.)?tiktok\.com\/@[\w.-]+\/video\/(\d+)/i))) return 'https://www.tiktok.com/embed/v2/' + m[1];
+    if ((m = String(u).match(/(?:www\.|m\.)?tiktok\.com\/video\/(\d+)/i))) return 'https://www.tiktok.com/embed/v2/' + m[1];
     if ((m = String(u).match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/i))) return 'https://www.instagram.com/' + m[1] + '/' + m[2] + '/embed';
     if ((m = String(u).match(/(?:x\.com|twitter\.com)\/[\w-]+\/status\/(\d+)/i))) return 'https://platform.twitter.com/embed/Tweet.html?id=' + m[1];
     if (/facebook\.com\/.*\/videos\/\d+/i.test(String(u))) return 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(u) + '&show_text=false';
     return null;
+  }
+  function isTikTokShortLink(u) {
+    return /(?:vt|vm)\.tiktok\.com\//i.test(String(u || ''));
+  }
+  function isPortraitEmbed(w, eu) {
+    return w.ratio === '9/16' || /tiktok\.com\/embed/i.test(String(eu || '')) || /instagram\.com\/.*\/embed/i.test(String(eu || ''));
   }
   function shareURL(w) { return window.location.origin + '/share/' + w.id + '.html'; }
 
@@ -96,9 +103,18 @@
     var m = $('wMedia');
     if (w.type === 'video') {
       if (isExtSrc(w.src)) {
-        var eu = embedURL(w.src) || normURL(w.src);
-        m.innerHTML = '<iframe class="lb-frame" src="' + esc(eu) + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" allow="autoplay; fullscreen; encrypted-media" allowfullscreen style="background:#000"></iframe>' +
-          '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
+        var eu = embedURL(w.src);
+        if (!eu && isTikTokShortLink(w.src)) {
+          m.innerHTML = '<div class="lb-embed-fallback">' +
+            (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
+            '<p>Video ini memakai link TikTok pendek, jadi tidak bisa diputar di dalam website. Buka di TikTok lewat tombol di bawah.</p></div>' +
+            '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
+        } else {
+          var embedSrc = eu || normURL(w.src);
+          var frameClass = 'lb-frame' + (isPortraitEmbed(w, embedSrc) ? ' lb-portrait' : '');
+          m.innerHTML = '<iframe class="' + frameClass + '" src="' + esc(embedSrc) + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000"></iframe>' +
+            '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
+        }
       } else {
         m.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +
           ' controls playsinline class="' + (w.ratio === '9/16' ? 'portrait' : '') + '"></video>';

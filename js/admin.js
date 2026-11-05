@@ -344,8 +344,19 @@
     } else {
       data.works.unshift(work);
     }
+    // Link TikTok pendek tidak bisa diputar di website, beri tahu sekarang,
+    // bukan setelah Bebeb cek di tampilan user dan videonya diam.
+    if (type === 'video' && srcMode() === 'url' && /(?:vt|vm)\.tiktok\.com\//i.test(src)) {
+      toast('⚠ Link TikTok pendek tidak bisa diputar di website. Pakai link lengkap tiktok.com/@nama/video/ID.', true);
+    }
     var res = SiteData.save(data);
     toast(res.ok ? (res.persistent ? 'Karya tersimpan ✓' : 'Karya tersimpan (sesi ini) ✓') : '⚠ Gagal menyimpan — kemungkinan localStorage penuh. Coba pakai URL.', !res.ok);
+    // Simpan ke Supabase itu async: kalau gagal, jangan diam saja seperti
+    // sebelumnya. Cek 2 detik kemudian, beri tahu kalau cuma tersimpan lokal.
+    setTimeout(function () {
+      var err = (SiteData.lastCloudError && SiteData.lastCloudError()) || '';
+      if (err) toast('⚠ Tersimpan di browser ini saja, Supabase gagal: ' + err, true);
+    }, 2000);
     resetWorkForm();
     renderWorksList();
   });

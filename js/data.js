@@ -66,15 +66,28 @@ window.SiteData = (function () {
     return null;
   }
 
+  var lastCloudError = '';
   function cloudSave(data) {
     var c = supaClient();
-    if (c) {
-      try {
-        c.from('site_data').upsert({ id: 1, data: data, updated_at: new Date().toISOString() })
-          .then(function () {}, function () {});
-      } catch (e) { /* abaikan */ }
+    if (!c) { lastCloudError = 'Supabase belum dikonfigurasi'; return; }
+    try {
+      c.from('site_data').upsert({ id: 1, data: data, updated_at: new Date().toISOString() })
+        .then(function (res) {
+          if (res && res.error) {
+            lastCloudError = res.error.message || String(res.error);
+            if (window.console && console.error) console.error('Supabase save gagal:', res.error);
+          } else {
+            lastCloudError = '';
+          }
+        }, function (err) {
+          lastCloudError = (err && err.message) || String(err);
+          if (window.console && console.error) console.error('Supabase save gagal:', err);
+        });
+    } catch (e) {
+      lastCloudError = e && e.message ? e.message : String(e);
     }
   }
+  function lastCloudError() { return lastCloudError; }
 
   // dipanggil saat halaman dibuka: kalau Supabase terkonfigurasi,
   // data diambil dari cloud lalu disalin ke cache lokal
@@ -82,6 +95,11 @@ window.SiteData = (function () {
     var c = supaClient();
     if (!c) return Promise.resolve(false);
     return c.from('site_data').select('data').eq('id', 1).maybeSingle().then(function (res) {
+      if (res && res.error) {
+        lastCloudError = res.error.message || String(res.error);
+        if (window.console && console.error) console.error('Supabase load gagal:', res.error);
+        return false;
+      }
       if (res && res.data && res.data.data) {
         mem = res.data.data;
         try { window.localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {}
@@ -162,6 +180,7 @@ window.SiteData = (function () {
     save: save,
     update: update,
     reset: reset,
+    lastCloudError: lastCloudError,
     seed: function () { return JSON.parse(JSON.stringify(seed)); }
   };
 })();

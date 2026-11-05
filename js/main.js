@@ -43,11 +43,21 @@
     var m;
     if ((m = String(u).match(/(?:youtube\.com\/(?:watch\?[^#]*v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/i))) return 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&rel=0';
     if ((m = String(u).match(/vimeo\.com\/(?:video\/)?(\d+)/i))) return 'https://player.vimeo.com/video/' + m[1] + '?autoplay=1';
-    if ((m = String(u).match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/i))) return 'https://www.tiktok.com/embed/v2/' + m[1];
+    if ((m = String(u).match(/(?:www\.|m\.)?tiktok\.com\/@[\w.-]+\/video\/(\d+)/i))) return 'https://www.tiktok.com/embed/v2/' + m[1];
+    if ((m = String(u).match(/(?:www\.|m\.)?tiktok\.com\/video\/(\d+)/i))) return 'https://www.tiktok.com/embed/v2/' + m[1];
     if ((m = String(u).match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/i))) return 'https://www.instagram.com/' + m[1] + '/' + m[2] + '/embed';
     if ((m = String(u).match(/(?:x\.com|twitter\.com)\/[\w-]+\/status\/(\d+)/i))) return 'https://platform.twitter.com/embed/Tweet.html?id=' + m[1];
     if (/facebook\.com\/.*\/videos\/\d+/i.test(String(u))) return 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(u) + '&show_text=false';
     return null;
+  }
+  // Link TikTok pendek (vt.tiktok.com / vm.tiktok.com) tidak membawa ID video,
+  // jadi tidak bisa diubah jadi embed di browser. Jangan di-iframe sebagai
+  // halaman TikTok biasa, karena halaman itu menolak di-frame dan tampil putih.
+  function isTikTokShortLink(u) {
+    return /(?:vt|vm)\.tiktok\.com\//i.test(String(u || ''));
+  }
+  function isPortraitEmbed(w, eu) {
+    return w.ratio === '9/16' || /tiktok\.com\/embed/i.test(String(eu || '')) || /instagram\.com\/.*\/embed/i.test(String(eu || ''));
   }
 
   function main() {
@@ -235,9 +245,18 @@
       lbStage.appendChild(fr);
     } else if (w.type === 'video') {
       if (isExtSrc(w.src)) {
-        var eu = embedURL(w.src) || normURL(w.src);
-        lbStage.innerHTML = '<iframe class="lb-frame" src="' + esc(eu) + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000"></iframe>';
-        lbCaption.insertAdjacentHTML('beforeend', '<div style="margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></div>');
+        var eu = embedURL(w.src);
+        // Link TikTok pendek tidak bisa jadi embed: jangan iframe halaman
+        // TikTok biasa, tampilkan poster + tombol buka di TikTok saja.
+        if (!eu && isTikTokShortLink(w.src)) {
+          lbStage.innerHTML = '<div class="lb-embed-fallback">' +
+            (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
+            '<p>Video ini memakai link TikTok pendek, jadi tidak bisa diputar di dalam website. Buka di TikTok lewat tombol di bawah.</p></div>';
+        } else {
+          var embedSrc = eu || normURL(w.src);
+          var frameClass = 'lb-frame' + (isPortraitEmbed(w, embedSrc) ? ' lb-portrait' : '');
+          lbStage.innerHTML = '<iframe class="' + frameClass + '" src="' + esc(embedSrc) + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000"></iframe>';
+        }
       } else {
         lbStage.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +
           ' controls autoplay playsinline class="' + (w.ratio === '9/16' ? 'portrait' : '') + '"></video>';
@@ -246,6 +265,11 @@
       lbStage.innerHTML = '<img src="' + esc(w.src) + '" alt="' + esc(w.title) + '" />';
     }
     lbCaption.innerHTML = '<span class="cat">' + esc(w.category || w.type) + ' · ' + esc(w.ratio || '') + '</span><h3>' + esc(w.title) + '</h3>' + (w.desc ? '<p>' + esc(w.desc) + '</p>' : '');
+    // Link ini dulu disisipkan SEBELUM lbCaption.innerHTML di atas, jadi
+    // langsung terhapus lagi. Sekarang disisipkan setelahnya, supaya muncul.
+    if (w.type === 'video' && isExtSrc(w.src)) {
+      lbCaption.insertAdjacentHTML('beforeend', '<div style="margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></div>');
+    }
     if (w.type === 'webapp') {
       var isData = /^data:/.test(w.src);
       var href = isData ? '#' : w.src;
