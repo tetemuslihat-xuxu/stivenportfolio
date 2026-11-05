@@ -350,13 +350,28 @@
       toast('⚠ Link TikTok pendek tidak bisa diputar di website. Pakai link lengkap tiktok.com/@nama/video/ID.', true);
     }
     var res = SiteData.save(data);
-    toast(res.ok ? (res.persistent ? 'Karya tersimpan ✓' : 'Karya tersimpan (sesi ini) ✓') : '⚠ Gagal menyimpan — kemungkinan localStorage penuh. Coba pakai URL.', !res.ok);
-    // Simpan ke Supabase itu async: kalau gagal, jangan diam saja seperti
-    // sebelumnya. Cek 2 detik kemudian, beri tahu kalau cuma tersimpan lokal.
-    setTimeout(function () {
-      var err = (SiteData.lastCloudError && SiteData.lastCloudError()) || '';
-      if (err) toast('⚠ Tersimpan di browser ini saja, Supabase gagal: ' + err, true);
-    }, 2000);
+    if (!res.ok) {
+      toast('⚠ Gagal menyimpan — kemungkinan localStorage penuh. Coba pakai URL.', true);
+    } else {
+      // Simpan ke Supabase itu async: tunggu hasil nyatanya. Kalau berhasil,
+      // postingan dijamin masuk cloud dan muncul di browser lain. Kalau gagal
+      // (sudah dicoba ulang sekali di data.js), beri tahu supaya Bebeb simpan
+      // ulang, jangan diam saja seperti sebelumnya.
+      toast('Menyimpan ke cloud…', false);
+      var cp = (SiteData.lastCloudPromise && SiteData.lastCloudPromise()) || null;
+      if (cp && cp.then) {
+        cp.then(function (ok) {
+          if (ok) toast('Karya tersimpan di cloud ✓ — akan muncul di browser lain');
+          else toast('⚠ Tersimpan di browser ini saja, Supabase gagal: ' + ((SiteData.lastCloudError && SiteData.lastCloudError()) || 'tidak diketahui') + '. Coba simpan ulang.', true);
+        });
+      } else {
+        setTimeout(function () {
+          var err = (SiteData.lastCloudError && SiteData.lastCloudError()) || '';
+          if (err) toast('⚠ Tersimpan di browser ini saja, Supabase gagal: ' + err, true);
+          else toast('Karya tersimpan ✓');
+        }, 2000);
+      }
+    }
     resetWorkForm();
     renderWorksList();
   });

@@ -67,34 +67,63 @@ window.SiteData = (function () {
   }
 
   var lastCloudError = '';
+  var lastCloudSavedAt = 0;
+  var lastCloudPromise = null;
+  // Simpan ke cloud dan KEMBALIKAN promise-nya, supaya Admin bisa menunggu
+  // hasil nyatanya, bukan cuma menganggap tersimpan. Kalau gagal (mis.
+  // jaringan putus sesaat), coba sekali lagi setelah 1,2 detik.
   function cloudSave(data) {
     var c = supaClient();
-    if (!c) { lastCloudError = 'Supabase belum dikonfigurasi'; return; }
-    try {
-      c.from('site_data').upsert({ id: 1, data: data, updated_at: new Date().toISOString() })
-        .then(function (res) {
-          if (res && res.error) {
-            lastCloudError = res.error.message || String(res.error);
-            if (window.console && console.error) console.error('Supabase save gagal:', res.error);
-          } else {
-            lastCloudError = '';
+    if (!c) { lastCloudError = 'Supabase belum dikonfigurasi'; lastCloudPromise = Promise.resolve(false); return lastCloudPromise; }
+    function attempt(left) {
+      var p;
+      try {
+        p = c.from('site_data').upsert({ id: 1, data: data, updated_at: new Date().toISOString() });
+      } catch (e) {
+        lastCloudError = e && e.message ? e.message : String(e);
+        lastCloudPromise = Promise.resolve(false);
+        return lastCloudPromise;
+      }
+      return p.then(function (res) {
+        if (res && res.error) {
+          if (left > 0) {
+            return new Promise(function (resolve) { setTimeout(function () { resolve(attempt(left - 1)); }, 1200); });
           }
-        }, function (err) {
-          lastCloudError = (err && err.message) || String(err);
-          if (window.console && console.error) console.error('Supabase save gagal:', err);
-        });
-    } catch (e) {
-      lastCloudError = e && e.message ? e.message : String(e);
+          lastCloudError = res.error.message || String(res.error);
+          if (window.console && console.error) console.error('Supabase save gagal:', res.error);
+          return false;
+        }
+        lastCloudError = '';
+        lastCloudSavedAt = Date.now();
+        return true;
+      }, function (err) {
+        if (left > 0) {
+          return new Promise(function (resolve) { setTimeout(function () { resolve(attempt(left - 1)); }, 1200); });
+        }
+        lastCloudError = (err && err.message) || String(err);
+        if (window.console && console.error) console.error('Supabase save gagal:', err);
+        return false;
+      });
     }
+    lastCloudPromise = attempt(1);
+    return lastCloudPromise;
   }
   function lastCloudError() { return lastCloudError; }
+  function lastCloudPromise() { return lastCloudPromise; }
+  function cloudSavedAt() { return lastCloudSavedAt; }
 
   // dipanggil saat halaman dibuka: kalau Supabase terkonfigurasi,
-  // data diambil dari cloud lalu disalin ke cache lokal
+  // data diambil dari cloud lalu disalin ke cache lokal.
+  // Kalau muat cloud gagal (mis. jaringan putus sesaat), coba sekali lagi
+  // setelah 1,5 detik, supaya browser lain tidak langsung jatuh ke data
+  // contoh hanya karena satu kali gagal muat.
   function doInit() {
     var c = supaClient();
     if (!c) return Promise.resolve(false);
-    return c.from('site_data').select('data').eq('id', 1).maybeSingle().then(function (res) {
+    function loadOnce() {
+      return c.from('site_data').select('data').eq('id', 1).maybeSingle();
+    }
+    function handle(res) {
       if (res && res.error) {
         lastCloudError = res.error.message || String(res.error);
         if (window.console && console.error) console.error('Supabase load gagal:', res.error);
@@ -103,6 +132,7 @@ window.SiteData = (function () {
       if (res && res.data && res.data.data) {
         mem = res.data.data;
         try { window.localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {}
+        lastCloudError = '';
         return true;
       }
       // cloud masih kosong → kalau ada data lokal (dari sebelum Supabase aktif), migrasikan ke cloud
@@ -118,7 +148,19 @@ window.SiteData = (function () {
         }
       } catch (e) {}
       return false;
-    }).catch(function () { return false; });
+    }
+    return loadOnce().then(function (res) {
+      if (res && res.error) {
+        return new Promise(function (resolve) {
+          setTimeout(function () { loadOnce().then(function (res2) { resolve(handle(res2)); }).catch(function () { resolve(false); }); }, 1500);
+        });
+      }
+      return handle(res);
+    }).catch(function () {
+      return new Promise(function (resolve) {
+        setTimeout(function () { loadOnce().then(function (res2) { resolve(handle(res2)); }).catch(function () { resolve(false); }); }, 1500);
+      });
+    });
   }
 
   // tunggu library supabase (lokal/CDN) siap, maks 3 detik, baru inisialisasi cloud
@@ -181,6 +223,8 @@ window.SiteData = (function () {
     update: update,
     reset: reset,
     lastCloudError: lastCloudError,
+    lastCloudPromise: lastCloudPromise,
+    cloudSavedAt: cloudSavedAt,
     seed: function () { return JSON.parse(JSON.stringify(seed)); }
   };
 })();
