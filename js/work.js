@@ -112,7 +112,7 @@
         } else {
           var embedSrc = eu || normURL(w.src);
           var frameClass = 'lb-frame' + (isPortraitEmbed(w, embedSrc) ? ' lb-portrait' : '');
-          m.innerHTML = '<iframe class="' + frameClass + '" src="' + esc(embedSrc) + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000"></iframe>' +
+          m.innerHTML = '<iframe class="' + frameClass + '" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden"></iframe>' +
             '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
         }
       } else {

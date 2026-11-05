@@ -255,7 +255,7 @@
         } else {
           var embedSrc = eu || normURL(w.src);
           var frameClass = 'lb-frame' + (isPortraitEmbed(w, embedSrc) ? ' lb-portrait' : '');
-          lbStage.innerHTML = '<iframe class="' + frameClass + '" src="' + esc(embedSrc) + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000"></iframe>';
+          lbStage.innerHTML = '<iframe class="' + frameClass + '" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden"></iframe>';
         }
       } else {
         lbStage.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +
