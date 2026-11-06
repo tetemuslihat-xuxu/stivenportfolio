@@ -212,7 +212,12 @@
       card.addEventListener('click', function (e) {
         var sb = e.target.closest('.share-btn');
         if (sb) { e.stopPropagation(); shareWork(sb.getAttribute('data-share')); return; }
-        openLightbox(parseInt(card.getAttribute('data-idx'), 10));
+        var idx = parseInt(card.getAttribute('data-idx'), 10);
+        var w = visible[idx];
+        // Karya portfolio yang hanya jadi pengantar (mis. USSHOP Studio):
+        // klik langsung buka website aslinya di tab baru, tanpa lightbox/iframe.
+        if (w && w.newTab) { window.open(normURL(w.src), '_blank', 'noopener'); return; }
+        openLightbox(idx);
       });
     });
   }

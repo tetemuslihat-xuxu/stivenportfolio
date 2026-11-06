@@ -120,11 +120,18 @@
           ' controls playsinline class="' + (w.ratio === '9/16' ? 'portrait' : '') + '"></video>';
       }
     } else if (w.type === 'webapp') {
-      var fr = document.createElement('iframe');
-      fr.className = 'lb-frame';
-      fr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals');
-      if (/^data:/.test(w.src)) fr.srcdoc = decodeDataURL(w.src); else fr.src = normURL(w.src);
-      m.innerHTML = ''; m.appendChild(fr);
+      if (w.newTab) {
+        // Karya pengantar saja: tampilkan poster + tombol ke website asli,
+        // tanpa menanam website itu di dalam halaman ini.
+        m.innerHTML = (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
+          '<p style="text-align:center;margin-top:16px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka ' + esc(w.title) + ' ↗</a></p>';
+      } else {
+        var fr = document.createElement('iframe');
+        fr.className = 'lb-frame';
+        fr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals');
+        if (/^data:/.test(w.src)) fr.srcdoc = decodeDataURL(w.src); else fr.src = normURL(w.src);
+        m.innerHTML = ''; m.appendChild(fr);
+      }
     } else {
       m.innerHTML = '<img src="' + esc(w.src) + '" alt="' + esc(w.title) + '" />';
     }
