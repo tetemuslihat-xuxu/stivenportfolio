@@ -416,6 +416,27 @@
     return SiteData.get().works.find(function (w) { return w.id === id; });
   }
 
+  // Geser urutan karya: tukar posisi dengan tetangga atas/bawah, lalu simpan.
+  // Urutan array inilah yang tampil di halaman utama (main.js tidak mengurutkan ulang).
+  function moveWork(id, dir) {
+    var d = SiteData.get();
+    var i = d.works.findIndex(function (w) { return w.id === id; });
+    var j = i + dir;
+    if (i < 0 || j < 0 || j >= d.works.length) return;
+    var t = d.works[i]; d.works[i] = d.works[j]; d.works[j] = t;
+    var res = SiteData.save(d);
+    renderWorksList();
+    if (!res.ok) { toast('⚠ Urutan diubah di browser ini saja, gagal tersimpan', true); return; }
+    toast('Menyimpan urutan ke cloud…', false);
+    var cp = (SiteData.lastCloudPromise && SiteData.lastCloudPromise()) || null;
+    if (cp && cp.then) {
+      cp.then(function (ok) {
+        if (ok) toast('Urutan karya tersimpan ✓ — tampil di website sesuai urutan baru');
+        else toast('⚠ Urutan tersimpan di browser ini saja, Supabase gagal: ' + ((SiteData.lastCloudError && SiteData.lastCloudError()) || 'tidak diketahui') + '. Coba pindahkan lagi.', true);
+      });
+    }
+  }
+
   function renderWorksList() {
     var data = SiteData.get();
     var list = $('worksList');
@@ -424,7 +445,7 @@
       list.innerHTML = '<p class="empty-note">Belum ada karya. Tambahkan lewat form di atas.</p>';
       return;
     }
-    list.innerHTML = data.works.map(function (w) {
+    list.innerHTML = data.works.map(function (w, i) {
       var thumb;
       if (w.type === 'webapp') {
         thumb = w.poster ? '<img src="' + esc(w.poster) + '" alt="" />' : '<div class="thumb-mock">&lt;/&gt;</div>';
@@ -445,6 +466,8 @@
         '<div class="ops">' +
           '<button class="btn ghost small act-share" title="Salin link share karya">🔗</button>' +
           '<button class="btn ghost small act-dl" title="Unduh halaman share (OG) untuk karya ini">⬇</button>' +
+          '<button class="btn ghost small act-up" title="Pindah ke atas" ' + (i === 0 ? 'disabled' : '') + '>↑</button>' +
+          '<button class="btn ghost small act-down" title="Pindah ke bawah" ' + (i === data.works.length - 1 ? 'disabled' : '') + '>↓</button>' +
           '<button class="btn ghost small act-edit">Edit</button>' +
           '<button class="btn danger small act-del">Hapus</button>' +
         '</div></div>';
@@ -453,6 +476,8 @@
     list.querySelectorAll('.work-row').forEach(function (row) {
       var id = row.getAttribute('data-id');
       var wRow = findWork(id);
+      row.querySelector('.act-up').addEventListener('click', function () { moveWork(id, -1); });
+      row.querySelector('.act-down').addEventListener('click', function () { moveWork(id, 1); });
       row.querySelector('.act-del').addEventListener('click', function () {
         var w = findWork(id);
         if (!w) return;
