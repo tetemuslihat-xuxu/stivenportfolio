@@ -350,6 +350,8 @@ a { color: inherit; }
 .btn.danger { background: transparent; border-color: #e05545; color: #e05545; }
 .btn.danger:hover { background: #e05545; color: #fff; }
 .btn.small { padding: 8px 16px; font-size: 0.68rem; }
+.btn:disabled { opacity: 0.35; cursor: default; }
+.btn:disabled:hover { border-color: var(--line); color: var(--ink); background: transparent; }
 
 .admin-main { max-width: 1150px; margin: 0 auto; padding: 40px 5vw 90px; }
 .admin-tabs { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
