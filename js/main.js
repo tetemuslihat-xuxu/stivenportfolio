@@ -237,6 +237,36 @@
   var lbCount = document.getElementById('lbCount');
   var lbIndex = 0;
 
+  // ATURAN TERKUNCI — jaminan anti-potong untuk SEMUA postingan, hari ini
+  // dan ke depan. Penyebab yang terbukti dari perbandingan Bebeb: Janji
+  // Manis (deskripsi 4 baris) terpotong, RUSH (deskripsi 2 baris) aman —
+  // bedanya hanya tinggi caption. Makin panjang deskripsi, makin tinggi
+  // caption, makin besar total isi, dan kalau totalnya melewati layar,
+  // pemusatan lama mendorong frame ke atas sampai terpotong. Karena itu
+  // frame diukur ulang setiap kali dibuka: ukur tinggi caption yang
+  // sebenarnya, lalu kecilkan frame secukupnya supaya total isi selalu
+  // muat di layar dengan jarak di atas. Ini tidak tergantung versi CSS
+  // yang dimuat browser, karena ukuran frame diatur langsung dari JS.
+  function fitLightboxFrame() {
+    var media = lbStage.querySelector('iframe, video, img');
+    if (!media || !lb.classList.contains('open')) return;
+    var V = lb.clientHeight;
+    if (!(V > 0)) return;
+    var capH = lbCaption.offsetHeight || 0;
+    // 22 = jarak stage-caption, 70 = pengaman (padding 3vh x2 + jarak atas).
+    var maxStageH = Math.max(160, V - capH - 22 - 70);
+    var curH = media.offsetHeight || 0;
+    if (curH > maxStageH) {
+      if (media.tagName === 'IFRAME') {
+        var ar = curH > 0 ? (media.offsetWidth || 0) / curH : 16 / 9;
+        if (!(ar > 0)) ar = 16 / 9;
+        media.style.width = Math.round(maxStageH * ar) + 'px';
+        media.style.height = maxStageH + 'px';
+      } else {
+        media.style.maxHeight = maxStageH + 'px';
+      }
+    }
+  }
   function openLightbox(i) {
     if (!visible.length) return;
     lbIndex = (i + visible.length) % visible.length;
@@ -308,6 +338,7 @@
     lb.scrollTop = 0; // selalu mulai dari atas — posisi scroll lightbox sebelumnya tidak boleh terbawa
     lb.classList.add('open');
     document.body.style.overflow = 'hidden';
+    fitLightboxFrame();
   }
   function closeLightbox() {
     lb.classList.remove('open');
@@ -317,6 +348,7 @@
   function step(d) { openLightbox(lbIndex + d); }
 
   document.getElementById('lbClose').addEventListener('click', closeLightbox);
+  window.addEventListener('resize', function () { if (lb.classList.contains('open')) fitLightboxFrame(); });
   document.getElementById('lbPrev').addEventListener('click', function () { step(-1); });
   document.getElementById('lbNext').addEventListener('click', function () { step(1); });
   lb.addEventListener('click', function (e) { if (e.target === lb) closeLightbox(); });
