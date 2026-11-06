@@ -269,7 +269,7 @@
             var rp = String(w.ratio || '16/9').split('/');
             var rn = parseFloat(rp[0]) || 16, rd = parseFloat(rp[1]) || 9;
             var ar = rn / rd; if (!(ar > 0)) ar = 16 / 9;
-            lbStage.innerHTML = '<iframe class="lb-frame" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden;width:min(94vw, calc((100vh - 250px) * ' + ar.toFixed(4) + '), 1150px);aspect-ratio:' + rn + ' / ' + rd + ';height:auto"></iframe>';
+            lbStage.innerHTML = '<iframe class="lb-frame" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden;width:min(94vw, calc((100vh - 300px) * ' + ar.toFixed(4) + '), 1150px);aspect-ratio:' + rn + ' / ' + rd + ';height:auto"></iframe>';
           }
         }
       } else {
@@ -297,6 +297,7 @@
     }
     lbCaption.insertAdjacentHTML('beforeend', shareButtonsHTML(w));
     lbCount.textContent = (lbIndex + 1) + ' / ' + visible.length;
+    lb.scrollTop = 0; // selalu mulai dari atas — posisi scroll lightbox sebelumnya tidak boleh terbawa
     lb.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
