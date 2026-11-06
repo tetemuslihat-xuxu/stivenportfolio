@@ -111,9 +111,19 @@
             '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
         } else {
           var embedSrc = eu || normURL(w.src);
-          var frameClass = 'lb-frame' + (isPortraitEmbed(w, embedSrc) ? ' lb-portrait' : '');
-          m.innerHTML = '<iframe class="' + frameClass + '" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden"></iframe>' +
-            '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
+          if (isPortraitEmbed(w, embedSrc)) {
+            m.innerHTML = '<iframe class="lb-frame lb-portrait" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden"></iframe>' +
+              '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
+          } else {
+            // Frame embed landscape mengikuti rasio karya (mis. 16/9), supaya
+            // kotaknya pas dengan video: tidak ada hitam berlebih atas-bawah
+            // dan bagian atas frame tidak menempel ke tepi layar.
+            var rp2 = String(w.ratio || '16/9').split('/');
+            var rn2 = parseFloat(rp2[0]) || 16, rd2 = parseFloat(rp2[1]) || 9;
+            var ar2 = rn2 / rd2; if (!(ar2 > 0)) ar2 = 16 / 9;
+            m.innerHTML = '<iframe class="lb-frame" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden;width:min(94vw, calc((100vh - 250px) * ' + ar2.toFixed(4) + '), 1150px);aspect-ratio:' + rn2 + ' / ' + rd2 + ';height:auto"></iframe>' +
+              '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
+          }
         }
       } else {
         m.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +

@@ -259,8 +259,18 @@
             '<p>Video ini memakai link TikTok pendek, jadi tidak bisa diputar di dalam website. Buka di TikTok lewat tombol di bawah.</p></div>';
         } else {
           var embedSrc = eu || normURL(w.src);
-          var frameClass = 'lb-frame' + (isPortraitEmbed(w, embedSrc) ? ' lb-portrait' : '');
-          lbStage.innerHTML = '<iframe class="' + frameClass + '" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden"></iframe>';
+          if (isPortraitEmbed(w, embedSrc)) {
+            lbStage.innerHTML = '<iframe class="lb-frame lb-portrait" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden"></iframe>';
+          } else {
+            // Frame embed landscape mengikuti rasio karya (mis. 16/9), supaya
+            // kotaknya pas dengan video: tidak ada hitam berlebih atas-bawah
+            // dan bagian atas frame tidak menempel ke tepi layar. Berlaku
+            // untuk semua embed landscape ke depan (YouTube, Vimeo, dsb).
+            var rp = String(w.ratio || '16/9').split('/');
+            var rn = parseFloat(rp[0]) || 16, rd = parseFloat(rp[1]) || 9;
+            var ar = rn / rd; if (!(ar > 0)) ar = 16 / 9;
+            lbStage.innerHTML = '<iframe class="lb-frame" src="' + esc(embedSrc) + '" scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-presentation" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen style="background:#000;overflow:hidden;width:min(94vw, calc((100vh - 250px) * ' + ar.toFixed(4) + '), 1150px);aspect-ratio:' + rn + ' / ' + rd + ';height:auto"></iframe>';
+          }
         }
       } else {
         lbStage.innerHTML = '<video src="' + esc(w.src) + '"' + (w.poster ? ' poster="' + esc(w.poster) + '"' : '') +
