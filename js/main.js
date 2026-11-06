@@ -297,6 +297,14 @@
     }
     lbCaption.insertAdjacentHTML('beforeend', shareButtonsHTML(w));
     lbCount.textContent = (lbIndex + 1) + ' / ' + visible.length;
+    // Paksa layout lightbox dari JS (inline style) supaya bagian atas frame
+    // tidak pernah terpotong, walau file CSS yang dimuat browser masih versi
+    // lama: lebar frame sudah terbukti ikut JS terbaru, jadi aturan ini pun
+    // ikut versi terbaru. margin auto di stage/caption memusatkan isi kalau
+    // muat, dan menempel ke tepi atas (bisa di-scroll) kalau isi lebih tinggi.
+    lb.style.justifyContent = 'flex-start';
+    lbStage.style.marginTop = 'auto';
+    lbCaption.style.marginBottom = 'auto';
     lb.scrollTop = 0; // selalu mulai dari atas — posisi scroll lightbox sebelumnya tidak boleh terbawa
     lb.classList.add('open');
     document.body.style.overflow = 'hidden';
