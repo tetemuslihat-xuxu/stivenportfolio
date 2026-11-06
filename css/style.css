@@ -243,16 +243,21 @@ a { color: inherit; }
 .card .desc { color: var(--ink-2); font-size: 0.88rem; margin-top: 4px; }
 
 /* ---------------- lightbox ---------------- */
+/* Lightbox: konten dipusatkan lewat margin auto di .lb-stage (atas) dan
+   .lb-caption (bawah), BUKAN justify-content center — supaya kalau isi
+   lebih tinggi dari layar, bagian ATAS tidak pernah terpotong (safe center
+   saja ternyata tidak menahan di browser Bebeb 1366x768) dan sisanya bisa
+   di-scroll. Cadangan vertikal 300px: caption panjang + padding. */
 .lightbox {
   position: fixed; inset: 0; z-index: 500; display: none;
   background: rgba(10, 8, 5, 0.93); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  align-items: safe center; justify-content: safe center; flex-direction: column; padding: 3vh 4vw; overflow-y: auto; overflow-x: hidden;
+  align-items: safe center; justify-content: flex-start; flex-direction: column; padding: 3vh 4vw; overflow-y: auto; overflow-x: hidden;
 }
 .lightbox.open { display: flex; }
-.lb-stage { display: flex; align-items: center; justify-content: center; max-width: 100%; max-height: calc(100vh - 250px); flex-shrink: 1; min-height: 0; }
-.lb-stage video, .lb-stage img { max-width: 92vw; max-height: calc(100vh - 250px); border-radius: 8px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6); }
-.lb-stage video.portrait { height: min(76vh, calc(100vh - 250px)); width: auto; max-width: 92vw; }
-.lb-caption { color: #f7f1e6; text-align: center; margin-top: 22px; max-width: 640px; flex-shrink: 0; }
+.lb-stage { display: flex; align-items: center; justify-content: center; max-width: 100%; max-height: calc(100vh - 300px); flex-shrink: 1; min-height: 0; margin-top: auto; }
+.lb-stage video, .lb-stage img { max-width: 92vw; max-height: calc(100vh - 300px); border-radius: 8px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6); }
+.lb-stage video.portrait { height: min(76vh, calc(100vh - 300px)); width: auto; max-width: 92vw; }
+.lb-caption { color: #f7f1e6; text-align: center; margin-top: 22px; max-width: 640px; flex-shrink: 0; margin-bottom: auto; }
 .lb-caption h3 { font-size: 1.2rem; font-weight: 600; }
 .lb-caption .cat { color: var(--amber-soft); font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; }
 .lb-caption p { color: rgba(247, 241, 230, 0.7); font-size: 0.9rem; margin-top: 6px; }
@@ -421,10 +426,10 @@ input[type="file"] { font-size: 0.82rem; color: var(--ink-2); }
 .browser-mock .bm-body { flex: 1; display: flex; align-items: center; justify-content: center; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 2.2rem; color: var(--amber-deep); }
 .thumb-mock { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; background: linear-gradient(160deg, #241c12, #14100b); }
 .badge.webapp { border-color: #2dd4bf; color: #2dd4bf; }
-.lb-frame { width: min(94vw, 1150px); height: min(74vh, calc(100vh - 250px)); border: 0; border-radius: 10px; background: #fff; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6); overflow: hidden; }
+.lb-frame { width: min(94vw, 1150px); height: min(74vh, calc(100vh - 300px)); border: 0; border-radius: 10px; background: #fff; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6); overflow: hidden; }
 /* Video portrait 9:16 / TikTok: iframe dibuat sempit mengikuti videonya,
    bukan lebar 1150px, supaya tidak ada putih di kiri dan kanan. */
-.lb-frame.lb-portrait { width: min(92vw, calc(76vh * 9 / 16), calc((100vh - 250px) * 9 / 16)); height: min(76vh, calc(100vh - 250px)); background: #000; overflow: hidden; }
+.lb-frame.lb-portrait { width: min(92vw, calc(76vh * 9 / 16), calc((100vh - 300px) * 9 / 16)); height: min(76vh, calc(100vh - 300px)); background: #000; overflow: hidden; }
 .work-media iframe.lb-frame.lb-portrait { width: min(94vw, calc(66vh * 9 / 16)); height: 66vh; background: #000; }
 /* Kalau link tidak bisa jadi embed (mis. TikTok pendek): tampilkan poster
    + pesan jujur, bukan iframe putih kosong. */
