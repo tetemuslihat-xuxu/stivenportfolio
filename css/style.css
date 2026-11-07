@@ -441,6 +441,19 @@ input[type="file"] { font-size: 0.82rem; color: var(--ink-2); }
 .lb-tiktok { width: min(325px, 92vw); margin: 0 auto; }
 .lb-tiktok iframe { border: 0; border-radius: 10px; display: block; }
 .work-media .lb-tiktok { margin: 0 auto; }
+/* Lightbox TikTok: video dan caption BERDAMPINGAN (bukan atas-bawah) di layar
+   lebar — pemutar 325x578 di kiri, teks di kanan. Total tinggi jadi hanya
+   setinggi pemutar, jadi bagian atas tidak terhimpit dan deskripsi panjang
+   punya bidang lebar. Di layar sempit (HP) kembali ke atas-bawah. */
+.lightbox.lb-side { flex-direction: row; align-items: center; justify-content: center; gap: 36px; }
+.lightbox.lb-side .lb-stage { margin: 0; max-height: none; }
+.lightbox.lb-side .lb-caption { margin: 0; text-align: left; max-width: 400px; flex-shrink: 1; }
+.lb-sound-hint { font-size: 0.8rem; color: rgba(247, 241, 230, 0.6); margin-top: 10px; }
+@media (max-width: 860px) {
+  .lightbox.lb-side { flex-direction: column; gap: 0; }
+  .lightbox.lb-side .lb-stage { margin-top: auto; }
+  .lightbox.lb-side .lb-caption { margin-bottom: auto; text-align: center; max-width: 640px; }
+}
 .lb-open { display: inline-block; margin-top: 14px; font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber-soft); text-decoration: none; border: 1px solid rgba(245, 176, 77, 0.5); padding: 9px 20px; border-radius: 999px; transition: 0.25s; }
 .lb-open:hover { background: var(--amber); border-color: var(--amber); color: var(--dark); }
 
