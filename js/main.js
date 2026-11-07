@@ -57,10 +57,51 @@
     return /(?:vt|vm)\.tiktok\.com\//i.test(String(u || ''));
   }
   // Video TikTok lengkap (tiktok.com/@user/video/ID atau /video/ID).
-  // Embed-nya DITOLAK TikTok sendiri (overload-protect), jadi video ini
-  // TIDAK PERNAH di-iframe — tampilkan poster + tombol ke TikTok saja.
+  // Iframe /embed/v2/ DITOLAK TikTok sendiri (overload-protect, terverifikasi
+  // di browser Bebeb dan di tes A/B 7 Nov 2026) — jadi JANGAN di-iframe.
+  // Yang BISA diputar adalah embed RESMI TikTok (embed.js): di tes A/B yang
+  // sama pemutar resmi itu memutar video sampai habis (00:36/00:36) dan tombol
+  // Replay jalan. Pemutar resmi juga menampilkan nama akun Bebeb dan tautan
+  // ke TikTok — jalur ke akunnya tetap jalan, itu strateginya.
   function isTikTokVideo(u) {
     return /(?:www\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/\d+|video\/\d+)/i.test(String(u || ''));
+  }
+  function tiktokVideoId(u) {
+    var m = String(u || '').match(/tiktok\.com\/(?:@[\w.-]+\/video\/|video\/)(\d+)/i);
+    return m ? m[1] : '';
+  }
+  // Muat script embed resmi TikTok sekali saja, lalu proses blockquote yang
+  // baru disisipkan. embed.js juga memproses sendiri blockquote baru lewat
+  // MutationObserver, tapi pemanggilan load() eksplisit ini yang menjamin.
+  function loadTikTokEmbed() {
+    if (window.tiktokEmbed && window.tiktokEmbed.load) { window.tiktokEmbed.load(); return; }
+    if (document.querySelector('script[data-tiktok-embed]')) return; // sedang dimuat
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.tiktok.com/embed.js';
+    s.setAttribute('data-tiktok-embed', '1');
+    s.onload = function () { if (window.tiktokEmbed && window.tiktokEmbed.load) window.tiktokEmbed.load(); };
+    document.head.appendChild(s);
+  }
+  // HTML embed resmi TikTok untuk satu karya (blockquote; embed.js yang
+  // menggantinya jadi pemutar). section/a di dalamnya adalah fallback kalau
+  // script TikTok tidak termuat — tetap ada tautan ke akun Bebeb.
+  function tiktokEmbedHTML(w) {
+    var id = tiktokVideoId(w.src);
+    var url = normURL(w.src);
+    var am = String(w.src || '').match(/tiktok\.com\/(@[\w.-]+)/i);
+    var author = am ? am[1] : '';
+    var authorHref = author ? 'https://www.tiktok.com/' + author : url;
+    var authorLabel = author || 'TikTok';
+    return '<div class="lb-tiktok"><blockquote class="tiktok-embed" cite="' + esc(url) + '" data-video-id="' + esc(id) + '" style="max-width:325px;min-width:325px"><section><a target="_blank" title="' + esc(authorLabel) + '" href="' + esc(authorHref) + '">' + esc(authorLabel) + '</a></section></blockquote></div>';
+  }
+  // Kalau embed.js gagal termuat (mis. CDN TikTok diblokir), blockquote tidak
+  // berubah jadi pemutar. Kembalikan ke poster + tombol supaya tidak ada
+  // kotak kosong — video tetap bisa dibuka di TikTok.
+  function tiktokEmbedFallbackHTML(w) {
+    return '<div class="lb-embed-fallback">' +
+      (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
+      '<p>Video ini ada di TikTok. Tonton langsung di TikTok lewat tombol di bawah.</p></div>';
   }
   function isPortraitEmbed(w, eu) {
     return w.ratio === '9/16' || /tiktok\.com\/embed/i.test(String(eu || '')) || /instagram\.com\/.*\/embed/i.test(String(eu || ''));
@@ -256,6 +297,9 @@
   function fitLightboxFrame() {
     var media = lbStage.querySelector('iframe, video, img');
     if (!media || !lb.classList.contains('open')) return;
+    // Pemutar resmi TikTok mengatur ukurannya sendiri (325x580) — jangan
+    // dipaksa kecil oleh hitungan frame; lightbox bisa di-scroll.
+    if (lbStage.querySelector('.lb-tiktok')) return;
     var V = lb.clientHeight;
     if (!(V > 0)) return;
     var capH = lbCaption.offsetHeight || 0;
@@ -277,6 +321,7 @@
     if (!visible.length) return;
     lbIndex = (i + visible.length) % visible.length;
     var w = visible[lbIndex];
+    lbStage.style.maxHeight = ''; // reset; cabang TikTok yang mengaturnya ke 'none'
     if (w.type === 'webapp') {
       var fr = document.createElement('iframe');
       fr.className = 'lb-frame';
@@ -287,16 +332,24 @@
     } else if (w.type === 'video') {
       if (isExtSrc(w.src)) {
         var eu = embedURL(w.src);
-        // TikTok menolak embed-nya sendiri (overload-protect, terverifikasi
-        // di browser Bebeb 7 Nov 2026): iframe embed menampilkan layar error
-        // dan video terpotong di dalam frame, tidak bisa diputar sama sekali.
-        // Jadi untuk SEMUA video TikTok, jangan iframe embed-nya: tampilkan
-        // poster penuh + tombol ke TikTok. Jalur ke akun TikTok Bebeb tetap
-        // jalan — itu strateginya — tanpa layar error.
+        // Iframe /embed/v2/ DITOLAK TikTok (overload-protect), tapi embed
+        // RESMI (embed.js) TERVERIFIKASI BISA memutar sampai habis di tes A/B
+        // 7 Nov 2026 — jadi video TikTok diputar lewat embed resmi. Tombol
+        // "Tonton di TikTok" di caption tetap ada (jalur ke akun Bebeb).
+        // Stage dilepas dari max-height supaya pemutar 325x580 tidak terpotong.
         if (isTikTokVideo(w.src)) {
-          lbStage.innerHTML = '<div class="lb-embed-fallback">' +
-            (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
-            '<p>Video ini ada di TikTok. Tonton langsung di TikTok lewat tombol di bawah.</p></div>';
+          lbStage.style.maxHeight = 'none';
+          lbStage.innerHTML = tiktokEmbedHTML(w);
+          loadTikTokEmbed();
+          // Cadangan: kalau embed.js tidak termuat dalam 6 detik, tampilkan
+          // poster + tombol supaya tidak ada kotak kosong.
+          (function (wid) {
+            setTimeout(function () {
+              if (lb.classList.contains('open') && visible[lbIndex] && visible[lbIndex].id === wid && lbStage.querySelector('blockquote.tiktok-embed')) {
+                lbStage.innerHTML = tiktokEmbedFallbackHTML(visible[lbIndex]);
+              }
+            }, 6000);
+          })(w.id);
         } else if (!eu && isTikTokShortLink(w.src)) {
           lbStage.innerHTML = '<div class="lb-embed-fallback">' +
             (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
@@ -358,6 +411,7 @@
   function closeLightbox() {
     lb.classList.remove('open');
     lbStage.innerHTML = '';
+    lbStage.style.maxHeight = '';
     document.body.style.overflow = '';
   }
   function step(d) { openLightbox(lbIndex + d); }
