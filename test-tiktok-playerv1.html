@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><title>TikTok player/v1 test — 3 video</title>
+<style>body{font-family:sans-serif;background:#111;color:#eee} .col{display:inline-block;vertical-align:top;margin:10px} h3{margin:10px} #log{position:fixed;right:10px;top:10px;width:340px;background:#222;padding:10px;font-size:13px;white-space:pre-wrap;max-height:90vh;overflow:auto}</style></head>
+<body>
+<div id="log">LOG:\n</div>
+<div class="col"><h3>Car</h3>
+<iframe id="tt-car" data-label="Car" src="https://www.tiktok.com/player/v1/7684052889450384641?autoplay=1&amp;muted=1&amp;description=1&amp;music_info=1" width="325" height="578" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
+<div class="col"><h3>Kasbiku</h3>
+<iframe id="tt-kasbiku" data-label="Kasbiku" src="https://www.tiktok.com/player/v1/7683370264981409040?autoplay=1&amp;muted=1&amp;description=1&amp;music_info=1" width="325" height="578" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
+<div class="col"><h3>Konto</h3>
+<iframe id="tt-konto" data-label="Konto" src="https://www.tiktok.com/player/v1/7683524206604111105?autoplay=1&amp;muted=1&amp;description=1&amp;music_info=1" width="325" height="578" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
+<script>
+var logEl = document.getElementById('log');
+function log(s){ logEl.textContent += s + '\n'; }
+var frames = {};
+document.querySelectorAll('iframe[data-label]').forEach(function (f) { frames[f.id] = f; });
+window.addEventListener('message', function (e) {
+  var d = e.data;
+  if (!d || !d['x-tiktok-player']) return;
+  var label = '?';
+  Object.keys(frames).forEach(function (id) { if (e.source === frames[id].contentWindow) label = frames[id].getAttribute('data-label'); });
+  log(label + ': ' + d.type + (d.value ? ' ' + JSON.stringify(d.value) : ''));
+});
+setTimeout(function(){
+  Object.keys(frames).forEach(function (id) { log('15s check ' + frames[id].getAttribute('data-label') + ': connected=' + !!frames[id].isConnected); });
+}, 15000);
+</script>
+</body></html>
