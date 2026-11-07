@@ -283,6 +283,7 @@
       // Gagal definitif — tampilkan poster + tombol.
       if (lb.classList.contains('open') && lbStage.querySelector('.lb-tiktok')) {
         lbStage.innerHTML = tiktokEmbedFallbackHTML(visible[lbIndex]);
+        var hh = lbCaption.querySelector('.lb-sound-hint'); if (hh) hh.remove(); // tidak ada pemutar, petunjuk suara tidak berlaku
       }
     }
   });
@@ -353,6 +354,7 @@
             ttTimer = setTimeout(function () {
               if (!ttReady && lb.classList.contains('open') && visible[lbIndex] && visible[lbIndex].id === wid && lbStage.querySelector('.lb-tiktok')) {
                 lbStage.innerHTML = tiktokEmbedFallbackHTML(visible[lbIndex]);
+                var hh2 = lbCaption.querySelector('.lb-sound-hint'); if (hh2) hh2.remove(); // tidak ada pemutar, petunjuk suara tidak berlaku
               }
             }, 10000);
           })(w.id);
@@ -388,6 +390,15 @@
     if (w.type === 'video' && isExtSrc(w.src)) {
       var openLabel = (isTikTokVideo(w.src) || isTikTokShortLink(w.src)) ? 'Tonton di TikTok ↗' : 'Buka di platform asli ↗';
       lbCaption.insertAdjacentHTML('beforeend', '<div style="margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">' + openLabel + '</a></div>');
+      if (isTikTokVideo(w.src)) {
+        // Petunjuk suara: video autoplay tanpa suara (aturan browser), tombol
+        // speaker pemutar tersembunyi saat memutar dan video pendek (Kasbiku
+        // 10 detik) mudah keburu habis sebelum sempat diklik — jadi beri tahu
+        // pengunjung untuk klik speaker lalu Replay bila video sudah selesai.
+        // (Hanya untuk video TikTok lengkap yang punya pemutar, bukan link
+        // pendek yang hanya tampil poster.)
+        lbCaption.insertAdjacentHTML('beforeend', '<div class="lb-sound-hint">🔊 Playing muted. Click the speaker icon in the player, then Replay if the video has ended.</div>');
+      }
     }
     if (w.type === 'webapp') {
       var isData = /^data:/.test(w.src);
@@ -406,9 +417,21 @@
     // lama: lebar frame sudah terbukti ikut JS terbaru, jadi aturan ini pun
     // ikut versi terbaru. margin auto di stage/caption memusatkan isi kalau
     // muat, dan menempel ke tepi atas (bisa di-scroll) kalau isi lebih tinggi.
-    lb.style.justifyContent = 'flex-start';
-    lbStage.style.marginTop = 'auto';
-    lbCaption.style.marginBottom = 'auto';
+    // TikTok (pemutar portrait) tampil BERDAMPINGAN — video di kiri, teks di
+    // kanan (ide Bebeb 8 Nov 2026) — supaya bagian atas tidak terhimpit dan
+    // deskripsi panjang punya bidang lebar. Yang lain tetap atas-bawah.
+    var isSide = (w.type === 'video' && isExtSrc(w.src) && (isTikTokVideo(w.src) || isTikTokShortLink(w.src)));
+    if (isSide) {
+      lb.classList.add('lb-side');
+      lb.style.justifyContent = 'center';
+      lbStage.style.marginTop = '';
+      lbCaption.style.marginBottom = '';
+    } else {
+      lb.classList.remove('lb-side');
+      lb.style.justifyContent = 'flex-start';
+      lbStage.style.marginTop = 'auto';
+      lbCaption.style.marginBottom = 'auto';
+    }
     lb.scrollTop = 0; // selalu mulai dari atas — posisi scroll lightbox sebelumnya tidak boleh terbawa
     lb.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -416,6 +439,7 @@
   }
   function closeLightbox() {
     lb.classList.remove('open');
+    lb.classList.remove('lb-side');
     ttClear();
     var f = lbStage.querySelector('iframe');
     if (f) { try { f.src = 'about:blank'; } catch (e) {} } // hentikan pemutar sebelum dilepas
