@@ -321,6 +321,23 @@
       }
     }
   }
+  // Pilih mode layout lightbox untuk satu karya: berdampingan (video kiri,
+  // teks kanan) hanya bila layarnya cukup lebar; di layar sempit kembali ke
+  // atas-bawah dengan bagian atas menempel.
+  function applyLightboxLayout(w) {
+    var isSide = (w.type === 'video' && isExtSrc(w.src) && (isTikTokVideo(w.src) || isTikTokShortLink(w.src))) && window.innerWidth > 860;
+    if (isSide) {
+      lb.classList.add('lb-side');
+      lb.style.justifyContent = 'center';
+      lbStage.style.marginTop = '';
+      lbCaption.style.marginBottom = '';
+    } else {
+      lb.classList.remove('lb-side');
+      lb.style.justifyContent = 'flex-start';
+      lbStage.style.marginTop = 'auto';
+      lbCaption.style.marginBottom = 'auto';
+    }
+  }
   function openLightbox(i) {
     if (!visible.length) return;
     lbIndex = (i + visible.length) % visible.length;
@@ -417,21 +434,15 @@
     // lama: lebar frame sudah terbukti ikut JS terbaru, jadi aturan ini pun
     // ikut versi terbaru. margin auto di stage/caption memusatkan isi kalau
     // muat, dan menempel ke tepi atas (bisa di-scroll) kalau isi lebih tinggi.
-    // TikTok (pemutar portrait) tampil BERDAMPINGAN — video di kiri, teks di
-    // kanan (ide Bebeb 8 Nov 2026) — supaya bagian atas tidak terhimpit dan
-    // deskripsi panjang punya bidang lebar. Yang lain tetap atas-bawah.
-    var isSide = (w.type === 'video' && isExtSrc(w.src) && (isTikTokVideo(w.src) || isTikTokShortLink(w.src)));
-    if (isSide) {
-      lb.classList.add('lb-side');
-      lb.style.justifyContent = 'center';
-      lbStage.style.marginTop = '';
-      lbCaption.style.marginBottom = '';
-    } else {
-      lb.classList.remove('lb-side');
-      lb.style.justifyContent = 'flex-start';
-      lbStage.style.marginTop = 'auto';
-      lbCaption.style.marginBottom = 'auto';
-    }
+    // Layout lightbox: TikTok (pemutar portrait) tampil BERDAMPINGAN — video di
+    // kiri, teks di kanan (ide Bebeb 8 Nov 2026) — supaya bagian atas tidak
+    // terhimpit dan deskripsi panjang punya bidang lebar. BERDAMPINGAN HANYA
+    // bila layar cukup lebar (>860px). Di HP (<=860px) kembali ke atas-bawah
+    // dengan bagian atas menempel: kalau tetap "center", isi yang lebih tinggi
+    // dari layar HP terdorong ke atas sampai terpotong dan tidak bisa di-scroll
+    // kembali. Dipanggil juga dari resize supaya putar HP / ubah ukuran jendela
+    // mengganti mode-nya langsung.
+    applyLightboxLayout(w);
     lb.scrollTop = 0; // selalu mulai dari atas — posisi scroll lightbox sebelumnya tidak boleh terbawa
     lb.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -450,7 +461,7 @@
   function step(d) { openLightbox(lbIndex + d); }
 
   document.getElementById('lbClose').addEventListener('click', closeLightbox);
-  window.addEventListener('resize', function () { if (lb.classList.contains('open')) fitLightboxFrame(); });
+  window.addEventListener('resize', function () { if (lb.classList.contains('open')) { applyLightboxLayout(visible[lbIndex]); fitLightboxFrame(); } });
   document.getElementById('lbPrev').addEventListener('click', function () { step(-1); });
   document.getElementById('lbNext').addEventListener('click', function () { step(1); });
   lb.addEventListener('click', function (e) { if (e.target === lb) closeLightbox(); });
