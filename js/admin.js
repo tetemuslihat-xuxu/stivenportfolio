@@ -389,8 +389,10 @@
       var cp = (SiteData.lastCloudPromise && SiteData.lastCloudPromise()) || null;
       if (cp && cp.then) {
         cp.then(function (ok) {
-          if (ok) toast('Karya tersimpan di cloud ✓ — akan muncul di browser lain');
-          else toast('⚠ Tersimpan di browser ini saja, Supabase gagal: ' + ((SiteData.lastCloudError && SiteData.lastCloudError()) || 'tidak diketahui') + '. Coba simpan ulang.', true);
+          if (ok) {
+            var mg = (SiteData.lastCloudMergedCount && SiteData.lastCloudMergedCount()) || 0;
+            toast('Karya tersimpan di cloud ✓ — akan muncul di browser lain' + (mg > 0 ? ' (+' + mg + ' karya dari cloud ikut diselamatkan, tidak ada yang hilang)' : ''));
+          } else toast('⚠ Tersimpan di browser ini saja, Supabase gagal: ' + ((SiteData.lastCloudError && SiteData.lastCloudError()) || 'tidak diketahui') + '. Coba simpan ulang.', true);
         });
       } else {
         setTimeout(function () {
@@ -459,8 +461,10 @@
     var cp = (SiteData.lastCloudPromise && SiteData.lastCloudPromise()) || null;
     if (cp && cp.then) {
       cp.then(function (ok) {
-        if (ok) toast('Urutan karya tersimpan ✓ — tampil di website sesuai urutan baru');
-        else toast('⚠ Urutan tersimpan di browser ini saja, Supabase gagal: ' + ((SiteData.lastCloudError && SiteData.lastCloudError()) || 'tidak diketahui') + '. Coba pindahkan lagi.', true);
+        if (ok) {
+          var mg2 = (SiteData.lastCloudMergedCount && SiteData.lastCloudMergedCount()) || 0;
+          toast('Urutan karya tersimpan ✓ — tampil di website sesuai urutan baru' + (mg2 > 0 ? ' (+' + mg2 + ' karya dari cloud ikut diselamatkan)' : ''));
+        } else toast('⚠ Urutan tersimpan di browser ini saja, Supabase gagal: ' + ((SiteData.lastCloudError && SiteData.lastCloudError()) || 'tidak diketahui') + '. Coba pindahkan lagi.', true);
       });
     }
   }
@@ -512,6 +516,11 @@
         if (!window.confirm('Hapus karya "' + w.title + '"?')) return;
         var d = SiteData.get();
         d.works = d.works.filter(function (x) { return x.id !== id; });
+        // PENGAMAN: catat id yang dihapus supaya pengaman gabungan (data.js)
+        // tidak menghidupkannya lagi dari cloud. Tanpa ini, browser lama
+        // yang masih menyimpan karya tersebut akan mengembalikannya.
+        d.deletedWorkIds = d.deletedWorkIds || [];
+        if (d.deletedWorkIds.indexOf(id) === -1) d.deletedWorkIds.push(id);
         SiteData.save(d);
         if (editingId === id) resetWorkForm();
         renderWorksList();
