@@ -46,12 +46,9 @@
     return /(?:vt|vm)\.tiktok\.com\//i.test(String(u || ''));
   }
   // Video TikTok lengkap (tiktok.com/@user/video/ID atau /video/ID).
-  // Iframe /embed/v2/ DITOLAK TikTok sendiri (overload-protect, terverifikasi
-  // di browser Bebeb dan di tes A/B 7 Nov 2026) — jadi JANGAN di-iframe.
-  // Yang BISA diputar adalah embed RESMI TikTok (embed.js): di tes A/B yang
-  // sama pemutar resmi itu memutar video sampai habis (00:36/00:36) dan tombol
-  // Replay jalan. Pemutar resmi juga menampilkan nama akun Bebeb dan tautan
-  // ke TikTok — jalur ke akunnya tetap jalan, itu strateginya.
+  // Iframe /embed/v2/ DITOLAK TikTok sendiri (overload-protect), dan embed.js
+  // legacy tidak membentuk iframe untuk Kasbiku/Konto di tes live. Yang
+  // dipakai sekarang: iframe player/v1 langsung (lihat tiktokPlayerHTML).
   function isTikTokVideo(u) {
     return /(?:www\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/\d+|video\/\d+)/i.test(String(u || ''));
   }
@@ -59,25 +56,35 @@
     var m = String(u || '').match(/tiktok\.com\/(?:@[\w.-]+\/video\/|video\/)(\d+)/i);
     return m ? m[1] : '';
   }
-  function loadTikTokEmbed() {
-    if (window.tiktokEmbed && window.tiktokEmbed.load) { window.tiktokEmbed.load(); return; }
-    if (document.querySelector('script[data-tiktok-embed]')) return; // sedang dimuat
-    var s = document.createElement('script');
-    s.async = true;
-    s.src = 'https://www.tiktok.com/embed.js';
-    s.setAttribute('data-tiktok-embed', '1');
-    s.onload = function () { if (window.tiktokEmbed && window.tiktokEmbed.load) window.tiktokEmbed.load(); };
-    document.head.appendChild(s);
-  }
-  function tiktokEmbedHTML(w) {
+  // Pemutar resmi TikTok lewat iframe player/v1 LANGSUNG (endpoint resmi,
+  // terverifikasi memutar Car, Kasbiku, dan Konto di tes 8 Nov 2026 — ketiganya
+  // onPlayerReady tanpa error). embed.js JANGAN dipakai lagi: ia legacy, dan
+  // di tes live ia tidak membentuk iframe untuk Kasbiku/Konto. Pemutar
+  // berkomunikasi lewat postMessage (x-tiktok-player): onPlayerReady berarti
+  // berhasil, onPlayerError berarti gagal definitif. Ukuran tetap 325x578,
+  // autoplay butuh muted=1 + allow="autoplay".
+  function tiktokPlayerHTML(w) {
     var id = tiktokVideoId(w.src);
-    var url = normURL(w.src);
-    var am = String(w.src || '').match(/tiktok\.com\/(@[\w.-]+)/i);
-    var author = am ? am[1] : '';
-    var authorHref = author ? 'https://www.tiktok.com/' + author : url;
-    var authorLabel = author || 'TikTok';
-    return '<div class="lb-tiktok"><blockquote class="tiktok-embed" cite="' + esc(url) + '" data-video-id="' + esc(id) + '" style="max-width:325px;min-width:325px"><section><a target="_blank" title="' + esc(authorLabel) + '" href="' + esc(authorHref) + '">' + esc(authorLabel) + '</a></section></blockquote></div>';
+    return '<div class="lb-tiktok"><iframe title="TikTok video" src="https://www.tiktok.com/player/v1/' + esc(id) + '?autoplay=1&muted=1&description=1&music_info=1" width="325" height="578" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
   }
+  // Satu listener postMessage untuk pemutar TikTok di halaman ini.
+  var ttFrameW = null, ttReadyW = false, ttTimerW = null, ttWorkW = null;
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || !d['x-tiktok-player'] || !ttFrameW) return;
+    if (e.source !== ttFrameW.contentWindow) return;
+    if (d.type === 'onPlayerReady') {
+      ttReadyW = true;
+      if (ttTimerW) { clearTimeout(ttTimerW); ttTimerW = null; }
+    } else if (d.type === 'onPlayerError') {
+      if (ttTimerW) { clearTimeout(ttTimerW); ttTimerW = null; }
+      var mm = $('wMedia');
+      if (mm && mm.querySelector('.lb-tiktok') && ttWorkW) {
+        mm.innerHTML = tiktokEmbedFallbackHTML(ttWorkW) +
+          '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(ttWorkW.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
+      }
+    }
+  });
   function tiktokEmbedFallbackHTML(w) {
     return '<div class="lb-embed-fallback">' +
       (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
@@ -142,25 +149,26 @@
     if (w.type === 'video') {
       if (isExtSrc(w.src)) {
         var eu = embedURL(w.src);
-        // Embed RESMI TikTok (embed.js) terverifikasi BISA memutar (tes A/B
-        // 7 Nov 2026) — iframe /embed/v2/ yang ditolak TikTok. Tombol
+        // Embed RESMI TikTok lewat iframe player/v1 langsung (terverifikasi
+        // memutar Car, Kasbiku, dan Konto di tes 8 Nov 2026). Tombol
         // "Tonton di TikTok" tetap ada di bawah (jalur ke akun Bebeb).
         if (isTikTokVideo(w.src)) {
-          m.innerHTML = tiktokEmbedHTML(w) +
+          m.innerHTML = tiktokPlayerHTML(w) +
             '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
-          loadTikTokEmbed();
-          // Cadangan: kalau embed.js tidak termuat dalam 8 detik (tidak ada
-          // iframe pemutar yang terbentuk), tampilkan poster + tombol supaya
-          // tidak ada kotak kosong. PENTING: yang dicek adalah ADA tidaknya
-          // iframe pemutar — blockquote-nya tetap ada di DOM walau pemutar
-          // sudah jadi, jadi mengecek blockquote akan salah membunuh pemutar
-          // yang sudah memutar (itu yang terjadi di tes live 7 Nov 2026).
-          setTimeout(function () {
-            if (!m.querySelector('.lb-tiktok iframe')) {
+          ttFrameW = m.querySelector('iframe');
+          ttReadyW = false;
+          ttWorkW = w;
+          if (ttTimerW) clearTimeout(ttTimerW);
+          // Cadangan: kalau TikTok tidak menjawab sama sekali dalam 10 detik
+          // (tidak ada onPlayerReady dan tidak ada onPlayerError — mis. CDN
+          // diblokir), tampilkan poster + tombol. Pemutar yang sudah siap
+          // tidak pernah dibunuh oleh timer ini.
+          ttTimerW = setTimeout(function () {
+            if (!ttReadyW && m.querySelector('.lb-tiktok')) {
               m.innerHTML = tiktokEmbedFallbackHTML(w) +
                 '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
             }
-          }, 8000);
+          }, 10000);
         } else if (!eu && isTikTokShortLink(w.src)) {
           m.innerHTML = '<div class="lb-embed-fallback">' +
             (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
