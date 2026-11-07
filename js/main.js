@@ -341,14 +341,18 @@
           lbStage.style.maxHeight = 'none';
           lbStage.innerHTML = tiktokEmbedHTML(w);
           loadTikTokEmbed();
-          // Cadangan: kalau embed.js tidak termuat dalam 6 detik, tampilkan
-          // poster + tombol supaya tidak ada kotak kosong.
+          // Cadangan: kalau embed.js tidak termuat dalam 8 detik (tidak ada
+          // iframe pemutar yang terbentuk), tampilkan poster + tombol supaya
+          // tidak ada kotak kosong. PENTING: yang dicek adalah ADA tidaknya
+          // iframe pemutar — blockquote-nya tetap ada di DOM walau pemutar
+          // sudah jadi, jadi mengecek blockquote akan salah membunuh pemutar
+          // yang sudah memutar (itu yang terjadi di tes live 7 Nov 2026).
           (function (wid) {
             setTimeout(function () {
-              if (lb.classList.contains('open') && visible[lbIndex] && visible[lbIndex].id === wid && lbStage.querySelector('blockquote.tiktok-embed')) {
+              if (lb.classList.contains('open') && visible[lbIndex] && visible[lbIndex].id === wid && !lbStage.querySelector('.lb-tiktok iframe')) {
                 lbStage.innerHTML = tiktokEmbedFallbackHTML(visible[lbIndex]);
               }
-            }, 6000);
+            }, 8000);
           })(w.id);
         } else if (!eu && isTikTokShortLink(w.src)) {
           lbStage.innerHTML = '<div class="lb-embed-fallback">' +
