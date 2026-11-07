@@ -57,12 +57,9 @@
     return /(?:vt|vm)\.tiktok\.com\//i.test(String(u || ''));
   }
   // Video TikTok lengkap (tiktok.com/@user/video/ID atau /video/ID).
-  // Iframe /embed/v2/ DITOLAK TikTok sendiri (overload-protect, terverifikasi
-  // di browser Bebeb dan di tes A/B 7 Nov 2026) — jadi JANGAN di-iframe.
-  // Yang BISA diputar adalah embed RESMI TikTok (embed.js): di tes A/B yang
-  // sama pemutar resmi itu memutar video sampai habis (00:36/00:36) dan tombol
-  // Replay jalan. Pemutar resmi juga menampilkan nama akun Bebeb dan tautan
-  // ke TikTok — jalur ke akunnya tetap jalan, itu strateginya.
+  // Iframe /embed/v2/ DITOLAK TikTok sendiri (overload-protect), dan embed.js
+  // legacy tidak membentuk iframe untuk Kasbiku/Konto di tes live. Yang
+  // dipakai sekarang: iframe player/v1 langsung (lihat tiktokPlayerHTML).
   function isTikTokVideo(u) {
     return /(?:www\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/\d+|video\/\d+)/i.test(String(u || ''));
   }
@@ -70,34 +67,20 @@
     var m = String(u || '').match(/tiktok\.com\/(?:@[\w.-]+\/video\/|video\/)(\d+)/i);
     return m ? m[1] : '';
   }
-  // Muat script embed resmi TikTok sekali saja, lalu proses blockquote yang
-  // baru disisipkan. embed.js juga memproses sendiri blockquote baru lewat
-  // MutationObserver, tapi pemanggilan load() eksplisit ini yang menjamin.
-  function loadTikTokEmbed() {
-    if (window.tiktokEmbed && window.tiktokEmbed.load) { window.tiktokEmbed.load(); return; }
-    if (document.querySelector('script[data-tiktok-embed]')) return; // sedang dimuat
-    var s = document.createElement('script');
-    s.async = true;
-    s.src = 'https://www.tiktok.com/embed.js';
-    s.setAttribute('data-tiktok-embed', '1');
-    s.onload = function () { if (window.tiktokEmbed && window.tiktokEmbed.load) window.tiktokEmbed.load(); };
-    document.head.appendChild(s);
-  }
-  // HTML embed resmi TikTok untuk satu karya (blockquote; embed.js yang
-  // menggantinya jadi pemutar). section/a di dalamnya adalah fallback kalau
-  // script TikTok tidak termuat — tetap ada tautan ke akun Bebeb.
-  function tiktokEmbedHTML(w) {
+  // Pemutar resmi TikTok lewat iframe player/v1 LANGSUNG (endpoint resmi,
+  // terverifikasi memutar Car, Kasbiku, dan Konto di tes 8 Nov 2026 — ketiganya
+  // onPlayerReady tanpa error). embed.js JANGAN dipakai lagi: ia legacy, dan
+  // di tes live ia tidak membentuk iframe untuk Kasbiku/Konto. Pemutar
+  // berkomunikasi lewat postMessage (x-tiktok-player): onPlayerReady berarti
+  // berhasil, onPlayerError berarti gagal definitif. Ukuran tetap 325x578,
+  // autoplay butuh muted=1 + allow="autoplay".
+  function tiktokPlayerHTML(w) {
     var id = tiktokVideoId(w.src);
-    var url = normURL(w.src);
-    var am = String(w.src || '').match(/tiktok\.com\/(@[\w.-]+)/i);
-    var author = am ? am[1] : '';
-    var authorHref = author ? 'https://www.tiktok.com/' + author : url;
-    var authorLabel = author || 'TikTok';
-    return '<div class="lb-tiktok"><blockquote class="tiktok-embed" cite="' + esc(url) + '" data-video-id="' + esc(id) + '" style="max-width:325px;min-width:325px"><section><a target="_blank" title="' + esc(authorLabel) + '" href="' + esc(authorHref) + '">' + esc(authorLabel) + '</a></section></blockquote></div>';
+    return '<div class="lb-tiktok"><iframe title="TikTok video" src="https://www.tiktok.com/player/v1/' + esc(id) + '?autoplay=1&muted=1&description=1&music_info=1" width="325" height="578" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
   }
-  // Kalau embed.js gagal termuat (mis. CDN TikTok diblokir), blockquote tidak
-  // berubah jadi pemutar. Kembalikan ke poster + tombol supaya tidak ada
-  // kotak kosong — video tetap bisa dibuka di TikTok.
+  // Kalau pemutar player/v1 gagal (onPlayerError, atau TikTok tidak menjawab
+  // sama sekali — mis. CDN diblokir), kembalikan ke poster + tombol supaya
+  // tidak ada kotak kosong — video tetap bisa dibuka di TikTok.
   function tiktokEmbedFallbackHTML(w) {
     return '<div class="lb-embed-fallback">' +
       (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
@@ -284,6 +267,26 @@
   var lbCount = document.getElementById('lbCount');
   var lbIndex = 0;
 
+  // Pemutar TikTok player/v1 (lihat tiktokPlayerHTML): satu iframe per karya,
+  // berkomunikasi lewat postMessage. Satu listener untuk seluruh halaman.
+  var ttFrame = null, ttReady = false, ttTimer = null;
+  function ttClear() { if (ttTimer) { clearTimeout(ttTimer); ttTimer = null; } ttFrame = null; ttReady = false; }
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || !d['x-tiktok-player'] || !ttFrame) return;
+    if (e.source !== ttFrame.contentWindow) return;
+    if (d.type === 'onPlayerReady') {
+      ttReady = true;
+      if (ttTimer) { clearTimeout(ttTimer); ttTimer = null; }
+    } else if (d.type === 'onPlayerError') {
+      if (ttTimer) { clearTimeout(ttTimer); ttTimer = null; }
+      // Gagal definitif — tampilkan poster + tombol.
+      if (lb.classList.contains('open') && lbStage.querySelector('.lb-tiktok')) {
+        lbStage.innerHTML = tiktokEmbedFallbackHTML(visible[lbIndex]);
+      }
+    }
+  });
+
   // ATURAN TERKUNCI — jaminan anti-potong untuk SEMUA postingan, hari ini
   // dan ke depan. Penyebab yang terbukti dari perbandingan Bebeb: Janji
   // Manis (deskripsi 4 baris) terpotong, RUSH (deskripsi 2 baris) aman —
@@ -321,6 +324,7 @@
     if (!visible.length) return;
     lbIndex = (i + visible.length) % visible.length;
     var w = visible[lbIndex];
+    ttClear(); // bersihkan timer/frame TikTok karya sebelumnya
     lbStage.style.maxHeight = ''; // reset; cabang TikTok yang mengaturnya ke 'none'
     if (w.type === 'webapp') {
       var fr = document.createElement('iframe');
@@ -332,27 +336,25 @@
     } else if (w.type === 'video') {
       if (isExtSrc(w.src)) {
         var eu = embedURL(w.src);
-        // Iframe /embed/v2/ DITOLAK TikTok (overload-protect), tapi embed
-        // RESMI (embed.js) TERVERIFIKASI BISA memutar sampai habis di tes A/B
-        // 7 Nov 2026 — jadi video TikTok diputar lewat embed resmi. Tombol
-        // "Tonton di TikTok" di caption tetap ada (jalur ke akun Bebeb).
-        // Stage dilepas dari max-height supaya pemutar 325x580 tidak terpotong.
+        // Pemutar resmi TikTok lewat iframe player/v1 langsung (endpoint resmi,
+        // terverifikasi memutar Car, Kasbiku, dan Konto di tes 8 Nov 2026 —
+        // ketiganya onPlayerReady tanpa error; embed.js TIDAK dipakai lagi).
+        // Tombol "Tonton di TikTok" di caption tetap ada (jalur ke akun Bebeb).
+        // Stage dilepas dari max-height supaya pemutar 325x578 tidak terpotong.
         if (isTikTokVideo(w.src)) {
           lbStage.style.maxHeight = 'none';
-          lbStage.innerHTML = tiktokEmbedHTML(w);
-          loadTikTokEmbed();
-          // Cadangan: kalau embed.js tidak termuat dalam 8 detik (tidak ada
-          // iframe pemutar yang terbentuk), tampilkan poster + tombol supaya
-          // tidak ada kotak kosong. PENTING: yang dicek adalah ADA tidaknya
-          // iframe pemutar — blockquote-nya tetap ada di DOM walau pemutar
-          // sudah jadi, jadi mengecek blockquote akan salah membunuh pemutar
-          // yang sudah memutar (itu yang terjadi di tes live 7 Nov 2026).
+          lbStage.innerHTML = tiktokPlayerHTML(w);
+          ttFrame = lbStage.querySelector('iframe');
+          // Cadangan: kalau TikTok tidak menjawab sama sekali dalam 10 detik
+          // (tidak ada onPlayerReady dan tidak ada onPlayerError — mis. CDN
+          // diblokir), tampilkan poster + tombol. Pemutar yang sudah siap
+          // tidak pernah dibunuh oleh timer ini.
           (function (wid) {
-            setTimeout(function () {
-              if (lb.classList.contains('open') && visible[lbIndex] && visible[lbIndex].id === wid && !lbStage.querySelector('.lb-tiktok iframe')) {
+            ttTimer = setTimeout(function () {
+              if (!ttReady && lb.classList.contains('open') && visible[lbIndex] && visible[lbIndex].id === wid && lbStage.querySelector('.lb-tiktok')) {
                 lbStage.innerHTML = tiktokEmbedFallbackHTML(visible[lbIndex]);
               }
-            }, 8000);
+            }, 10000);
           })(w.id);
         } else if (!eu && isTikTokShortLink(w.src)) {
           lbStage.innerHTML = '<div class="lb-embed-fallback">' +
@@ -414,6 +416,9 @@
   }
   function closeLightbox() {
     lb.classList.remove('open');
+    ttClear();
+    var f = lbStage.querySelector('iframe');
+    if (f) { try { f.src = 'about:blank'; } catch (e) {} } // hentikan pemutar sebelum dilepas
     lbStage.innerHTML = '';
     lbStage.style.maxHeight = '';
     document.body.style.overflow = '';
