@@ -45,6 +45,12 @@
   function isTikTokShortLink(u) {
     return /(?:vt|vm)\.tiktok\.com\//i.test(String(u || ''));
   }
+  // Video TikTok lengkap (tiktok.com/@user/video/ID atau /video/ID).
+  // Embed-nya DITOLAK TikTok sendiri (overload-protect), jadi video ini
+  // TIDAK PERNAH di-iframe — tampilkan poster + tombol ke TikTok saja.
+  function isTikTokVideo(u) {
+    return /(?:www\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/\d+|video\/\d+)/i.test(String(u || ''));
+  }
   function isPortraitEmbed(w, eu) {
     return w.ratio === '9/16' || /tiktok\.com\/embed/i.test(String(eu || '')) || /instagram\.com\/.*\/embed/i.test(String(eu || ''));
   }
@@ -104,11 +110,18 @@
     if (w.type === 'video') {
       if (isExtSrc(w.src)) {
         var eu = embedURL(w.src);
-        if (!eu && isTikTokShortLink(w.src)) {
+        // TikTok menolak embed-nya sendiri (overload-protect): jangan iframe.
+        // Tampilkan poster penuh + tombol ke TikTok (jalur ke akun Bebeb).
+        if (isTikTokVideo(w.src)) {
+          m.innerHTML = '<div class="lb-embed-fallback">' +
+            (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
+            '<p>Video ini ada di TikTok. Tonton langsung di TikTok lewat tombol di bawah.</p></div>' +
+            '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
+        } else if (!eu && isTikTokShortLink(w.src)) {
           m.innerHTML = '<div class="lb-embed-fallback">' +
             (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
             '<p>Video ini memakai link TikTok pendek, jadi tidak bisa diputar di dalam website. Buka di TikTok lewat tombol di bawah.</p></div>' +
-            '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></p>';
+            '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
         } else {
           var embedSrc = eu || normURL(w.src);
           if (isPortraitEmbed(w, embedSrc)) {

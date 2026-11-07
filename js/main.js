@@ -56,6 +56,12 @@
   function isTikTokShortLink(u) {
     return /(?:vt|vm)\.tiktok\.com\//i.test(String(u || ''));
   }
+  // Video TikTok lengkap (tiktok.com/@user/video/ID atau /video/ID).
+  // Embed-nya DITOLAK TikTok sendiri (overload-protect), jadi video ini
+  // TIDAK PERNAH di-iframe — tampilkan poster + tombol ke TikTok saja.
+  function isTikTokVideo(u) {
+    return /(?:www\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/\d+|video\/\d+)/i.test(String(u || ''));
+  }
   function isPortraitEmbed(w, eu) {
     return w.ratio === '9/16' || /tiktok\.com\/embed/i.test(String(eu || '')) || /instagram\.com\/.*\/embed/i.test(String(eu || ''));
   }
@@ -281,9 +287,17 @@
     } else if (w.type === 'video') {
       if (isExtSrc(w.src)) {
         var eu = embedURL(w.src);
-        // Link TikTok pendek tidak bisa jadi embed: jangan iframe halaman
-        // TikTok biasa, tampilkan poster + tombol buka di TikTok saja.
-        if (!eu && isTikTokShortLink(w.src)) {
+        // TikTok menolak embed-nya sendiri (overload-protect, terverifikasi
+        // di browser Bebeb 7 Nov 2026): iframe embed menampilkan layar error
+        // dan video terpotong di dalam frame, tidak bisa diputar sama sekali.
+        // Jadi untuk SEMUA video TikTok, jangan iframe embed-nya: tampilkan
+        // poster penuh + tombol ke TikTok. Jalur ke akun TikTok Bebeb tetap
+        // jalan — itu strateginya — tanpa layar error.
+        if (isTikTokVideo(w.src)) {
+          lbStage.innerHTML = '<div class="lb-embed-fallback">' +
+            (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
+            '<p>Video ini ada di TikTok. Tonton langsung di TikTok lewat tombol di bawah.</p></div>';
+        } else if (!eu && isTikTokShortLink(w.src)) {
           lbStage.innerHTML = '<div class="lb-embed-fallback">' +
             (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
             '<p>Video ini memakai link TikTok pendek, jadi tidak bisa diputar di dalam website. Buka di TikTok lewat tombol di bawah.</p></div>';
@@ -313,7 +327,8 @@
     // Link ini dulu disisipkan SEBELUM lbCaption.innerHTML di atas, jadi
     // langsung terhapus lagi. Sekarang disisipkan setelahnya, supaya muncul.
     if (w.type === 'video' && isExtSrc(w.src)) {
-      lbCaption.insertAdjacentHTML('beforeend', '<div style="margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Buka di platform asli ↗</a></div>');
+      var openLabel = (isTikTokVideo(w.src) || isTikTokShortLink(w.src)) ? 'Tonton di TikTok ↗' : 'Buka di platform asli ↗';
+      lbCaption.insertAdjacentHTML('beforeend', '<div style="margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">' + openLabel + '</a></div>');
     }
     if (w.type === 'webapp') {
       var isData = /^data:/.test(w.src);
