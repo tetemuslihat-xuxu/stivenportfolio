@@ -149,14 +149,18 @@
           m.innerHTML = tiktokEmbedHTML(w) +
             '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
           loadTikTokEmbed();
-          // Cadangan: kalau embed.js tidak termuat dalam 6 detik, tampilkan
-          // poster + tombol supaya tidak ada kotak kosong.
+          // Cadangan: kalau embed.js tidak termuat dalam 8 detik (tidak ada
+          // iframe pemutar yang terbentuk), tampilkan poster + tombol supaya
+          // tidak ada kotak kosong. PENTING: yang dicek adalah ADA tidaknya
+          // iframe pemutar — blockquote-nya tetap ada di DOM walau pemutar
+          // sudah jadi, jadi mengecek blockquote akan salah membunuh pemutar
+          // yang sudah memutar (itu yang terjadi di tes live 7 Nov 2026).
           setTimeout(function () {
-            if (m.querySelector('blockquote.tiktok-embed')) {
+            if (!m.querySelector('.lb-tiktok iframe')) {
               m.innerHTML = tiktokEmbedFallbackHTML(w) +
                 '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
             }
-          }, 6000);
+          }, 8000);
         } else if (!eu && isTikTokShortLink(w.src)) {
           m.innerHTML = '<div class="lb-embed-fallback">' +
             (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
