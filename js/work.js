@@ -46,10 +46,42 @@
     return /(?:vt|vm)\.tiktok\.com\//i.test(String(u || ''));
   }
   // Video TikTok lengkap (tiktok.com/@user/video/ID atau /video/ID).
-  // Embed-nya DITOLAK TikTok sendiri (overload-protect), jadi video ini
-  // TIDAK PERNAH di-iframe — tampilkan poster + tombol ke TikTok saja.
+  // Iframe /embed/v2/ DITOLAK TikTok sendiri (overload-protect, terverifikasi
+  // di browser Bebeb dan di tes A/B 7 Nov 2026) — jadi JANGAN di-iframe.
+  // Yang BISA diputar adalah embed RESMI TikTok (embed.js): di tes A/B yang
+  // sama pemutar resmi itu memutar video sampai habis (00:36/00:36) dan tombol
+  // Replay jalan. Pemutar resmi juga menampilkan nama akun Bebeb dan tautan
+  // ke TikTok — jalur ke akunnya tetap jalan, itu strateginya.
   function isTikTokVideo(u) {
     return /(?:www\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/\d+|video\/\d+)/i.test(String(u || ''));
+  }
+  function tiktokVideoId(u) {
+    var m = String(u || '').match(/tiktok\.com\/(?:@[\w.-]+\/video\/|video\/)(\d+)/i);
+    return m ? m[1] : '';
+  }
+  function loadTikTokEmbed() {
+    if (window.tiktokEmbed && window.tiktokEmbed.load) { window.tiktokEmbed.load(); return; }
+    if (document.querySelector('script[data-tiktok-embed]')) return; // sedang dimuat
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.tiktok.com/embed.js';
+    s.setAttribute('data-tiktok-embed', '1');
+    s.onload = function () { if (window.tiktokEmbed && window.tiktokEmbed.load) window.tiktokEmbed.load(); };
+    document.head.appendChild(s);
+  }
+  function tiktokEmbedHTML(w) {
+    var id = tiktokVideoId(w.src);
+    var url = normURL(w.src);
+    var am = String(w.src || '').match(/tiktok\.com\/(@[\w.-]+)/i);
+    var author = am ? am[1] : '';
+    var authorHref = author ? 'https://www.tiktok.com/' + author : url;
+    var authorLabel = author || 'TikTok';
+    return '<div class="lb-tiktok"><blockquote class="tiktok-embed" cite="' + esc(url) + '" data-video-id="' + esc(id) + '" style="max-width:325px;min-width:325px"><section><a target="_blank" title="' + esc(authorLabel) + '" href="' + esc(authorHref) + '">' + esc(authorLabel) + '</a></section></blockquote></div>';
+  }
+  function tiktokEmbedFallbackHTML(w) {
+    return '<div class="lb-embed-fallback">' +
+      (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
+      '<p>Video ini ada di TikTok. Tonton langsung di TikTok lewat tombol di bawah.</p></div>';
   }
   function isPortraitEmbed(w, eu) {
     return w.ratio === '9/16' || /tiktok\.com\/embed/i.test(String(eu || '')) || /instagram\.com\/.*\/embed/i.test(String(eu || ''));
@@ -110,13 +142,21 @@
     if (w.type === 'video') {
       if (isExtSrc(w.src)) {
         var eu = embedURL(w.src);
-        // TikTok menolak embed-nya sendiri (overload-protect): jangan iframe.
-        // Tampilkan poster penuh + tombol ke TikTok (jalur ke akun Bebeb).
+        // Embed RESMI TikTok (embed.js) terverifikasi BISA memutar (tes A/B
+        // 7 Nov 2026) — iframe /embed/v2/ yang ditolak TikTok. Tombol
+        // "Tonton di TikTok" tetap ada di bawah (jalur ke akun Bebeb).
         if (isTikTokVideo(w.src)) {
-          m.innerHTML = '<div class="lb-embed-fallback">' +
-            (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
-            '<p>Video ini ada di TikTok. Tonton langsung di TikTok lewat tombol di bawah.</p></div>' +
+          m.innerHTML = tiktokEmbedHTML(w) +
             '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
+          loadTikTokEmbed();
+          // Cadangan: kalau embed.js tidak termuat dalam 6 detik, tampilkan
+          // poster + tombol supaya tidak ada kotak kosong.
+          setTimeout(function () {
+            if (m.querySelector('blockquote.tiktok-embed')) {
+              m.innerHTML = tiktokEmbedFallbackHTML(w) +
+                '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
+            }
+          }, 6000);
         } else if (!eu && isTikTokShortLink(w.src)) {
           m.innerHTML = '<div class="lb-embed-fallback">' +
             (w.poster ? '<img src="' + esc(w.poster) + '" alt="' + esc(w.title) + '" />' : '') +
