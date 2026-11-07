@@ -72,16 +72,49 @@ window.SiteData = (function () {
   var lastCloudError = '';
   var lastCloudSavedAt = 0;
   var lastCloudPromise = null;
+  // PENGAMAN ANTI-HILANG (7 Nov 2026, mandat ambil alih penuh): simpan Admin
+  // dulu menulis SELURUH baris cloud dari snapshot browser itu saja — browser
+  // lama yang datanya belum lengkap ikut menghapus karya yang ditambahkan di
+  // tempat lain (Color Lab hilang 3x, MONEY POLITIC hilang, rasio Car kembali).
+  // Sekarang, SEBELUM upsert, data cloud terbaru dibaca dulu dan DIGABUNG:
+  // karya yang hanya ada di cloud ikut tersimpan (tidak ada yang hilang),
+  // karya yang sengaja dihapus tetap hilang berkat daftar tombstone
+  // (deletedWorkIds) — daftar itu disimpan di dalam baris data sendiri,
+  // jadi berlaku di semua browser. Kalau baca cloud gagal (jaringan),
+  // simpan tetap jalan seperti dulu (upsert data lokal) supaya tidak
+  // memblokir Bebeb.
+  var lastCloudMerged = 0;
+  function lastCloudMergedCount() { return lastCloudMerged; }
+  function mergeData(local, cloud) {
+    var tomb = {};
+    (local.deletedWorkIds || []).forEach(function (id) { tomb[id] = true; });
+    (cloud.deletedWorkIds || []).forEach(function (id) { tomb[id] = true; });
+    var seen = {};
+    var works = [];
+    (local.works || []).forEach(function (w) {
+      if (w && w.id && !tomb[w.id] && !seen[w.id]) { seen[w.id] = true; works.push(w); }
+    });
+    var added = 0;
+    (cloud.works || []).forEach(function (w) {
+      if (w && w.id && !tomb[w.id] && !seen[w.id]) { seen[w.id] = true; works.push(w); added++; }
+    });
+    var out = {};
+    Object.keys(local).forEach(function (k) { out[k] = local[k]; });
+    out.works = works;
+    out.deletedWorkIds = Object.keys(tomb);
+    return { data: out, added: added };
+  }
   // Simpan ke cloud dan KEMBALIKAN promise-nya, supaya Admin bisa menunggu
   // hasil nyatanya, bukan cuma menganggap tersimpan. Kalau gagal (mis.
   // jaringan putus sesaat), coba sekali lagi setelah 1,2 detik.
   function cloudSave(data) {
     var c = supaClient();
+    lastCloudMerged = 0;
     if (!c) { lastCloudError = 'Supabase belum dikonfigurasi'; lastCloudPromise = Promise.resolve(false); return lastCloudPromise; }
-    function attempt(left) {
+    function attempt(payload, left) {
       var p;
       try {
-        p = c.from('site_data').upsert({ id: 1, data: data, updated_at: new Date().toISOString() });
+        p = c.from('site_data').upsert({ id: 1, data: payload, updated_at: new Date().toISOString() });
       } catch (e) {
         lastCloudError = e && e.message ? e.message : String(e);
         lastCloudPromise = Promise.resolve(false);
@@ -90,7 +123,7 @@ window.SiteData = (function () {
       return p.then(function (res) {
         if (res && res.error) {
           if (left > 0) {
-            return new Promise(function (resolve) { setTimeout(function () { resolve(attempt(left - 1)); }, 1200); });
+            return new Promise(function (resolve) { setTimeout(function () { resolve(attempt(payload, left - 1)); }, 1200); });
           }
           lastCloudError = res.error.message || String(res.error);
           if (window.console && console.error) console.error('Supabase save gagal:', res.error);
@@ -98,17 +131,47 @@ window.SiteData = (function () {
         }
         lastCloudError = '';
         lastCloudSavedAt = Date.now();
+        // Snapshot lokal ikut diperbarui dengan hasil gabungan, supaya
+        // browser ini tidak lagi menyimpan dari data yang belum lengkap.
+        try { window.localStorage.setItem(KEY, JSON.stringify(payload)); } catch (e) {}
         return true;
       }, function (err) {
         if (left > 0) {
-          return new Promise(function (resolve) { setTimeout(function () { resolve(attempt(left - 1)); }, 1200); });
+          return new Promise(function (resolve) { setTimeout(function () { resolve(attempt(payload, left - 1)); }, 1200); });
         }
         lastCloudError = (err && err.message) || String(err);
         if (window.console && console.error) console.error('Supabase save gagal:', err);
         return false;
       });
     }
-    lastCloudPromise = attempt(1);
+    function fetchAndSave(left) {
+      var q;
+      try {
+        q = c.from('site_data').select('data').eq('id', 1).maybeSingle();
+      } catch (e) {
+        return attempt(data, 1);
+      }
+      // Batasi tunggu baca cloud 10 detik: kalau lelet, jangan gantung
+      // simpan — lanjut upsert data lokal seperti dulu.
+      var timed = new Promise(function (resolve) {
+        var done = false;
+        var t = setTimeout(function () { if (!done) { done = true; resolve(null); } }, 10000);
+        q.then(function (res) { if (!done) { done = true; clearTimeout(t); resolve(res); } },
+               function () { if (!done) { done = true; clearTimeout(t); resolve(null); } });
+      });
+      return timed.then(function (res) {
+        if (res && !res.error && res.data && res.data.data && res.data.data.works) {
+          var m = mergeData(data, res.data.data);
+          lastCloudMerged = m.added;
+          return attempt(m.data, 1);
+        }
+        if (res && res.error && left > 0) {
+          return new Promise(function (resolve) { setTimeout(function () { resolve(fetchAndSave(left - 1)); }, 1200); });
+        }
+        return attempt(data, 1);
+      });
+    }
+    lastCloudPromise = fetchAndSave(1);
     return lastCloudPromise;
   }
   function lastCloudError() { return lastCloudError; }
@@ -227,6 +290,7 @@ window.SiteData = (function () {
     reset: reset,
     lastCloudError: lastCloudError,
     lastCloudPromise: lastCloudPromise,
+    lastCloudMergedCount: lastCloudMergedCount,
     cloudSavedAt: cloudSavedAt,
     seed: function () { return JSON.parse(JSON.stringify(seed)); }
   };
