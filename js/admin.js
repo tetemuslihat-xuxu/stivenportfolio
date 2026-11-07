@@ -135,6 +135,15 @@
     }
   }
 
+  // RULE (7 Nov 2026): gambar (poster/foto) yang di-upload DARI ADMIN selalu
+  // dikompres dulu (maks 1200px, JPEG 0.82) sebelum disimpan sebagai data.
+  // Tanpa ini, satu poster dari HP (2-3 MB) langsung memenuhi localStorage
+  // (~5 MB) hingga Admin tidak bisa menyimpan lagi (7 Nov 2026: data 5,04 MB).
+  // RULE 2: karya yang dihapus di Admin langsung hilang dari data (save
+  // menulis ulang SELURUH data ke cloud + localStorage), dan file-nya
+  // (poster di assets/posters, share page, og image) WAJIB ikut dihapus
+  // dari repo — Admin tidak bisa menghapus file GitHub sendiri, jadi
+  // pembersihan repo dilakukan terpisah. Jangan biarkan file yatim menumpuk.
   function readFileAsDataURL(file) {
     return new Promise(function (resolve, reject) {
       if (file.size > MAX_FILE_BYTES) {
@@ -142,10 +151,29 @@
           return reject(new Error('cancelled'));
         }
       }
-      var r = new FileReader();
-      r.onload = function () { resolve(r.result); };
-      r.onerror = function () { reject(new Error('read error')); };
-      r.readAsDataURL(file);
+      if (file.type && file.type.indexOf('image/') === 0) {
+        var url = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function () {
+          URL.revokeObjectURL(url);
+          var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          var scale = Math.min(1, 1200 / w);
+          var cv = document.createElement('canvas');
+          cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          resolve(cv.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); fallback(); };
+        img.src = url;
+        return;
+      }
+      fallback();
+      function fallback() {
+        var r = new FileReader();
+        r.onload = function () { resolve(r.result); };
+        r.onerror = function () { reject(new Error('read error')); };
+        r.readAsDataURL(file);
+      }
     });
   }
 

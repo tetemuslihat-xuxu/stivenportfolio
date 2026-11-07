@@ -51,8 +51,11 @@ window.SiteData = (function () {
       { id: 'w5', type: 'video', ratio: '16/9', category: 'Commercial', title: 'Kopi Lokal — Brand Film', desc: '16:9 landscape brand film for a coffee company.', src: 'assets/videos/brandfilm-landscape.mp4', poster: 'assets/videos/brandfilm-landscape-poster.jpg' },
       { id: 'w6', type: 'design', ratio: '2/3', category: 'Poster', title: 'Suara Timur — Poster', desc: 'Festival poster, bold grotesk type on amber grain.', src: 'assets/designs/poster-festival.jpg', poster: '' },
       { id: 'w7', type: 'design', ratio: '1/1', category: 'Social Media', title: 'New Drop — Social Post', desc: 'Square launch post for a streetwear drop.', src: 'assets/designs/social-post.jpg', poster: '' },
-      { id: 'w8', type: 'design', ratio: '1/1', category: 'Branding', title: 'Stiven Studio — Identity', desc: 'Stationery & identity presentation for the studio.', src: 'assets/designs/branding.jpg', poster: '' },
-      { id: 'w9', type: 'webapp', ratio: '16/10', category: 'Web App Demo', title: 'Color Lab — Palette Generator', desc: 'Interactive web app: click GENERATE for a palette, click a swatch to copy its hex. Try the live demo!', src: 'assets/demo-app.html', poster: '' }
+      { id: 'w8', type: 'design', ratio: '1/1', category: 'Branding', title: 'Stiven Studio — Identity', desc: 'Stationery & identity presentation for the studio.', src: 'assets/designs/branding.jpg', poster: '' }
+      // RULE (7 Nov 2026): karya yang sudah dihapus pemiliknya TIDAK BOLEH
+      // muncul lagi di mana pun — tidak di seed ini, tidak di data cloud,
+      // tidak di localStorage, dan file-nya (poster/share/og) dihapus dari repo.
+      // Color Lab (w9) dihapus dari seed ini karena pemiliknya sengaja menghapusnya.
     ]
   };
 
