@@ -154,7 +154,8 @@
         // "Tonton di TikTok" tetap ada di bawah (jalur ke akun Bebeb).
         if (isTikTokVideo(w.src)) {
           m.innerHTML = tiktokPlayerHTML(w) +
-            '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>';
+            '<p style="text-align:center;margin-top:14px"><a class="lb-open" href="' + esc(normURL(w.src)) + '" target="_blank" rel="noopener">Tonton di TikTok ↗</a></p>' +
+            '<p class="lb-sound-hint" style="text-align:center">🔊 Playing muted. Click the speaker icon in the player, then Replay if the video has ended.</p>';
           ttFrameW = m.querySelector('iframe');
           ttReadyW = false;
           ttWorkW = w;
